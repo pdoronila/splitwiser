@@ -776,13 +776,56 @@ def unmanage_guest(
     return {"message": "Guest manager removed successfully"}
 
 
-@app.get("/groups/{group_id}/expenses", response_model=list[schemas.Expense])
+@app.get("/groups/{group_id}/expenses", response_model=list[schemas.ExpenseWithSplits])
 def get_group_expenses(group_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Session = Depends(get_db)):
     get_group_or_404(db, group_id)
     verify_group_membership(db, group_id, current_user.id)
 
     expenses = db.query(models.Expense).filter(models.Expense.group_id == group_id).order_by(models.Expense.date.desc()).all()
-    return expenses
+
+    # Include splits for each expense
+    result = []
+    for expense in expenses:
+        splits = db.query(models.ExpenseSplit).filter(models.ExpenseSplit.expense_id == expense.id).all()
+
+        # Build splits with user names
+        splits_with_names = []
+        for split in splits:
+            if split.is_guest:
+                guest = db.query(models.GuestMember).filter(models.GuestMember.id == split.user_id).first()
+                user_name = guest.name if guest else "Unknown Guest"
+            else:
+                user = db.query(models.User).filter(models.User.id == split.user_id).first()
+                user_name = (user.full_name or user.email) if user else "Unknown User"
+
+            splits_with_names.append(schemas.ExpenseSplitDetail(
+                id=split.id,
+                expense_id=split.expense_id,
+                user_id=split.user_id,
+                is_guest=split.is_guest,
+                amount_owed=split.amount_owed,
+                percentage=split.percentage,
+                shares=split.shares,
+                user_name=user_name
+            ))
+
+        expense_dict = {
+            "id": expense.id,
+            "description": expense.description,
+            "amount": expense.amount,
+            "currency": expense.currency,
+            "date": expense.date,
+            "payer_id": expense.payer_id,
+            "payer_is_guest": expense.payer_is_guest,
+            "group_id": expense.group_id,
+            "created_by_id": expense.created_by_id,
+            "split_type": expense.split_type,
+            "splits": splits_with_names,
+            "items": []
+        }
+        result.append(expense_dict)
+
+    return result
 
 @app.get("/groups/{group_id}/balances", response_model=list[schemas.GroupBalance])
 def get_group_balances(group_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Session = Depends(get_db)):

@@ -37,6 +37,17 @@ interface Group {
     guests: GuestMember[];
 }
 
+interface ExpenseSplit {
+    id: number;
+    expense_id: number;
+    user_id: number;
+    is_guest: boolean;
+    amount_owed: number;
+    percentage?: number;
+    shares?: number;
+    user_name: string;
+}
+
 interface Expense {
     id: number;
     description: string;
@@ -46,6 +57,7 @@ interface Expense {
     payer_id: number;
     payer_is_guest: boolean;
     group_id: number | null;
+    splits: ExpenseSplit[];
 }
 
 interface GroupBalance {
@@ -90,6 +102,8 @@ const GroupDetailPage: React.FC = () => {
     const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1 });
     const [isMembersExpanded, setIsMembersExpanded] = useState(false);
     const [isBalancesExpanded, setIsBalancesExpanded] = useState(true);
+    const [isExpensesExpanded, setIsExpensesExpanded] = useState(false);
+    const [showOnlyMyExpenses, setShowOnlyMyExpenses] = useState(false);
 
     // Set dynamic page title with group name
     usePageTitle(group?.name || 'Loading...');
@@ -462,6 +476,24 @@ const GroupDetailPage: React.FC = () => {
 
     const isOwner = group.created_by_id === user?.id;
 
+    const getFilteredExpenses = () => {
+        if (!showOnlyMyExpenses || !user) return expenses;
+
+        return expenses.filter(expense => {
+            // Include if user is the payer
+            if (expense.payer_id === user.id && !expense.payer_is_guest) {
+                return true;
+            }
+
+            // Include if user is in the splits
+            return expense.splits?.some(split =>
+                split.user_id === user.id && !split.is_guest
+            );
+        });
+    };
+
+    const filteredExpenses = getFilteredExpenses();
+
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
             {/* Header */}
@@ -510,15 +542,27 @@ const GroupDetailPage: React.FC = () => {
 
                 {/* Expenses Section - Priority #1 */}
                 <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 p-4 lg:p-6 mb-4">
-                    <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 lg:mb-4">
-                        Recent Expenses
-                    </h2>
+                    <div className="flex items-center justify-between mb-3 lg:mb-4">
+                        <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">
+                            Recent Expenses
+                        </h2>
+                        {expenses.length > 0 && (
+                            <button
+                                onClick={() => setShowOnlyMyExpenses(!showOnlyMyExpenses)}
+                                className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
+                            >
+                                {showOnlyMyExpenses ? 'Show all' : 'Only mine'}
+                            </button>
+                        )}
+                    </div>
 
-                    {expenses.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400 italic text-sm">No expenses yet</p>
+                    {filteredExpenses.length === 0 ? (
+                        <p className="text-gray-500 dark:text-gray-400 italic text-sm">
+                            {showOnlyMyExpenses ? 'No expenses where you participated' : 'No expenses yet'}
+                        </p>
                     ) : (
                         <div className="divide-y">
-                            {expenses.slice(0, 5).map(expense => (
+                            {(isExpensesExpanded ? filteredExpenses : filteredExpenses.slice(0, 5)).map(expense => (
                                 <div
                                     key={expense.id}
                                     className="py-3 flex items-start lg:items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded gap-2"
@@ -542,11 +586,16 @@ const GroupDetailPage: React.FC = () => {
                                     </div>
                                 </div>
                             ))}
-                            {expenses.length > 5 && (
+                            {filteredExpenses.length > 5 && (
                                 <div className="pt-3 text-center">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                        +{expenses.length - 5} more expenses
-                                    </span>
+                                    <button
+                                        onClick={() => setIsExpensesExpanded(!isExpensesExpanded)}
+                                        className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-medium cursor-pointer hover:underline"
+                                    >
+                                        {isExpensesExpanded
+                                            ? 'Show less'
+                                            : `+${filteredExpenses.length - 5} more expenses`}
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -555,11 +604,13 @@ const GroupDetailPage: React.FC = () => {
 
                 {/* Balances Section - Collapsible */}
                 <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 mb-4">
-                    <button
-                        onClick={() => setIsBalancesExpanded(!isBalancesExpanded)}
+                    <div
                         className="w-full p-4 lg:p-6 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                        <div>
+                        <div
+                            onClick={() => setIsBalancesExpanded(!isBalancesExpanded)}
+                            className="flex-1 cursor-pointer"
+                        >
                             <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">
                                 Group Balances
                             </h2>
@@ -574,10 +625,7 @@ const GroupDetailPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                             {isBalancesExpanded && group?.default_currency && balances.length > 0 && (
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowInGroupCurrency(!showInGroupCurrency);
-                                    }}
+                                    onClick={() => setShowInGroupCurrency(!showInGroupCurrency)}
                                     className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
                                 >
                                     {showInGroupCurrency
@@ -585,11 +633,14 @@ const GroupDetailPage: React.FC = () => {
                                         : `In ${group.default_currency}`}
                                 </button>
                             )}
-                            <span className="text-gray-400 dark:text-gray-500 text-xl">
+                            <span
+                                onClick={() => setIsBalancesExpanded(!isBalancesExpanded)}
+                                className="text-gray-400 dark:text-gray-500 text-xl cursor-pointer"
+                            >
                                 {isBalancesExpanded ? '−' : '+'}
                             </span>
                         </div>
-                    </button>
+                    </div>
 
                     {isBalancesExpanded && (
                         <div className="px-4 lg:px-6 pb-4 lg:pb-6 border-t dark:border-gray-700">
