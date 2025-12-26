@@ -40,27 +40,27 @@ const DeleteGroupConfirm: React.FC<DeleteGroupConfirmProps> = ({ isOpen, onClose
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-            <div className="bg-white p-5 rounded-lg shadow-xl w-96">
-                <h2 className="text-xl font-bold mb-4 text-red-600">Delete Group</h2>
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-xl dark:shadow-gray-900/50 w-96">
+                <h2 className="text-xl font-bold mb-4 text-red-600 dark:text-red-400">Delete Group</h2>
 
-                <p className="text-gray-700 mb-4">
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
                     Are you sure you want to delete <strong>{group.name}</strong>?
                 </p>
 
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     This action cannot be undone. Existing expenses will be preserved but will no longer be associated with this group.
                 </p>
 
                 {error && (
-                    <p className="mb-4 text-sm text-red-500">{error}</p>
+                    <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error}</p>
                 )}
 
                 <div className="flex justify-end space-x-3">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded"
+                        className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                         disabled={isDeleting}
                     >
                         Cancel

@@ -105,7 +105,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const [payerId, setPayerId] = useState<number>(0);
     const [payerIsGuest, setPayerIsGuest] = useState(false);
     const [splitType, setSplitType] = useState('EQUAL');
-    const [splitDetails, setSplitDetails] = useState<{[key: string]: number}>({});
+    const [splitDetails, setSplitDetails] = useState<{ [key: string]: number }>({});
     const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<string[]>([]);
 
     // Itemized expense state
@@ -172,7 +172,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         setSelectedParticipantKeys(keys);
 
         // Set split details for non-EQUAL types
-        const details: {[key: string]: number} = {};
+        const details: { [key: string]: number } = {};
         exp.splits.forEach(s => {
             const key = s.is_guest ? `guest_${s.user_id}` : `user_${s.user_id}`;
             if (exp.split_type === 'PERCENT' && s.percentage !== null) {
@@ -269,7 +269,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const toggleParticipant = (key: string) => {
         if (selectedParticipantKeys.includes(key)) {
             setSelectedParticipantKeys(selectedParticipantKeys.filter(k => k !== key));
-            const newDetails = {...splitDetails};
+            const newDetails = { ...splitDetails };
             delete newDetails[key];
             setSplitDetails(newDetails);
         } else {
@@ -278,7 +278,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     };
 
     const handleSplitDetailChange = (key: string, value: string) => {
-        setSplitDetails({...splitDetails, [key]: parseFloat(value) || 0});
+        setSplitDetails({ ...splitDetails, [key]: parseFloat(value) || 0 });
     };
 
     // Helper to determine if we should use compact mode
@@ -314,7 +314,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const handleParticipantSelectorConfirm = (itemIdx: number, selectedParticipants: Participant[]) => {
         setItemizedItems(prev => {
             const updated = [...prev];
-            const item = {...updated[itemIdx]};
+            const item = { ...updated[itemIdx] };
             item.assignments = selectedParticipants.map(p => ({
                 user_id: p.id,
                 is_guest: p.isGuest
@@ -377,7 +377,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const toggleItemAssignment = (itemIdx: number, participant: Participant) => {
         setItemizedItems(prev => {
             const updated = [...prev];
-            const item = {...updated[itemIdx]};
+            const item = { ...updated[itemIdx] };
 
             const existingIdx = item.assignments.findIndex(
                 a => a.user_id === participant.id && a.is_guest === participant.isGuest
@@ -452,7 +452,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             });
             const sum = splits.reduce((acc, s) => acc + s.amount_owed, 0);
             if (Math.abs(sum - totalAmountCents) > 1) {
-                alert(`Amounts do not sum to total. Total: ${totalAmountCents/100}, Sum: ${sum/100}`);
+                alert(`Amounts do not sum to total. Total: ${totalAmountCents / 100}, Sum: ${sum / 100}`);
                 return;
             }
         } else if (splitType === 'PERCENT') {
@@ -637,7 +637,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const canEdit = expense?.created_by_id === currentUserId;
 
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
             {showParticipantSelector && (
                 <ParticipantSelector
                     isOpen={true}
@@ -661,32 +661,32 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                     itemDescription={itemizedItems[editingItemIndex]?.description || ''}
                 />
             )}
-            <div className="bg-white w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl overflow-y-auto flex flex-col">
+            <div className="bg-white dark:bg-gray-800 w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
                 {isLoading ? (
-                    <div className="text-center py-8 text-gray-500">Loading...</div>
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
                 ) : error ? (
                     <div className="text-center py-8">
-                        <div className="text-red-500 mb-4">{error}</div>
-                        <button onClick={handleClose} className="text-teal-600 hover:text-teal-800">Close</button>
+                        <div className="text-red-500 dark:text-red-400 mb-4">{error}</div>
+                        <button onClick={handleClose} className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300">Close</button>
                     </div>
                 ) : expense ? (
                     <>
                         {/* Header */}
-                        <div className="sticky top-0 bg-white z-10 p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center">
-                            <h2 className="text-xl font-bold">
+                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h2 className="text-xl font-bold dark:text-gray-100">
                                 {isEditing ? 'Edit Expense' : 'Expense Details'}
                             </h2>
                             {canEdit && !isEditing && !showDeleteConfirm && (
                                 <div className="flex space-x-2">
                                     <button
                                         onClick={() => setIsEditing(true)}
-                                        className="text-sm bg-teal-100 text-teal-700 px-3 py-2 rounded hover:bg-teal-200 min-h-[44px]"
+                                        className="text-sm bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-2 rounded hover:bg-teal-200 dark:hover:bg-teal-900/50 min-h-[44px]"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         onClick={() => setShowDeleteConfirm(true)}
-                                        className="text-sm bg-red-100 text-red-700 px-3 py-2 rounded hover:bg-red-200 min-h-[44px]"
+                                        className="text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-2 rounded hover:bg-red-200 dark:hover:bg-red-900/50 min-h-[44px]"
                                     >
                                         Delete
                                     </button>
@@ -696,8 +696,8 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
                         {/* Delete Confirmation */}
                         {showDeleteConfirm && (
-                            <div className="bg-red-50 border border-red-200 rounded p-4 m-4 sm:m-5">
-                                <p className="text-sm text-red-800 mb-3">
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 m-4 sm:m-5">
+                                <p className="text-sm text-red-800 dark:text-red-300 mb-3">
                                     Are you sure you want to delete this expense? This cannot be undone.
                                 </p>
                                 <div className="flex space-x-2">
@@ -720,282 +720,280 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                         {isEditing ? (
                             /* Edit Mode */
                             <div className="flex-1 flex flex-col">
-                            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Description:</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500"
-                                        value={description}
-                                        onChange={e => setDescription(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="mb-4 flex items-center space-x-2">
-                                    <select
-                                        value={currency}
-                                        onChange={(e) => setCurrency(e.target.value)}
-                                        className="border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-transparent"
-                                    >
-                                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <input
-                                        type="number"
-                                        placeholder="0.00"
-                                        className={`w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 text-lg ${splitType === 'ITEMIZED' ? 'bg-gray-100 text-gray-500' : ''}`}
-                                        value={splitType === 'ITEMIZED' ? calculateItemizedTotal() : amount}
-                                        onChange={e => setAmount(e.target.value)}
-                                        disabled={splitType === 'ITEMIZED'}
-                                        required={splitType !== 'ITEMIZED'}
-                                    />
-                                </div>
-
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Date:</label>
-                                    <input
-                                        type="date"
-                                        className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500"
-                                        value={expenseDate}
-                                        onChange={(e) => setExpenseDate(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Participants:</label>
-                                    {getAvailableParticipants().length > 6 ? (
-                                        /* Compact mode for large groups */
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowParticipantSelector(true)}
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 text-left flex items-center justify-between min-h-[44px]"
-                                        >
-                                            <span className="text-sm">
-                                                {getSelectedParticipantsDisplay()}
-                                            </span>
-                                            <svg className="w-5 h-5 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path d="M9 5l7 7-7 7"></path>
-                                            </svg>
-                                        </button>
-                                    ) : (
-                                        /* Inline buttons for small groups */
-                                        <div className="flex flex-wrap gap-2">
-                                            {groupMembers.map(member => {
-                                                const key = `user_${member.user_id}`;
-                                                return (
-                                                    <button
-                                                        key={key}
-                                                        type="button"
-                                                        onClick={() => toggleParticipant(key)}
-                                                        className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedParticipantKeys.includes(key) ? 'bg-teal-100 border-teal-500 text-teal-700' : 'bg-gray-100 border-gray-300'}`}
-                                                    >
-                                                        {member.user_id === currentUserId ? 'You' : member.full_name}
-                                                    </button>
-                                                );
-                                            })}
-                                            {groupGuests.map(guest => {
-                                                const key = `guest_${guest.id}`;
-                                                return (
-                                                    <button
-                                                        key={key}
-                                                        type="button"
-                                                        onClick={() => toggleParticipant(key)}
-                                                        className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedParticipantKeys.includes(key) ? 'bg-orange-100 border-orange-500 text-orange-700' : 'bg-gray-100 border-gray-300'}`}
-                                                    >
-                                                        {guest.name} <span className="text-gray-400">(guest)</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {selectedParticipantKeys.length > 0 && (
+                                <div className="flex-1 overflow-y-auto p-4 sm:p-5">
                                     <div className="mb-4">
-                                        <label className="block text-gray-700 text-sm font-bold mb-2">Paid by:</label>
+                                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Description:</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="mb-4 flex items-center space-x-2">
                                         <select
-                                            value={payerIsGuest ? `guest_${payerId}` : `user_${payerId}`}
-                                            onChange={(e) => {
-                                                const [type, id] = e.target.value.split('_');
-                                                setPayerId(parseInt(id));
-                                                setPayerIsGuest(type === 'guest');
-                                            }}
-                                            className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-white"
+                                            value={currency}
+                                            onChange={(e) => setCurrency(e.target.value)}
+                                            className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent dark:bg-gray-700 dark:text-gray-200"
                                         >
-                                            {getPotentialPayers().map(p => (
-                                                <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
-                                                    {p.name}{p.isGuest ? ' (guest)' : ''}
-                                                </option>
-                                            ))}
+                                            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
+                                        <input
+                                            type="number"
+                                            placeholder="0.00"
+                                            className={`w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 text-lg dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 ${splitType === 'ITEMIZED' ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                            value={splitType === 'ITEMIZED' ? calculateItemizedTotal() : amount}
+                                            onChange={e => setAmount(e.target.value)}
+                                            disabled={splitType === 'ITEMIZED'}
+                                            required={splitType !== 'ITEMIZED'}
+                                        />
                                     </div>
-                                )}
 
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Split by:</label>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {['EQUAL', 'EXACT', 'PERCENT', 'SHARES', 'ITEMIZED'].map(type => (
+                                    <div className="mb-4">
+                                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
+                                        <input
+                                            type="date"
+                                            className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
+                                            value={expenseDate}
+                                            onChange={(e) => setExpenseDate(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Participants:</label>
+                                        {getAvailableParticipants().length > 6 ? (
+                                            /* Compact mode for large groups */
                                             <button
-                                                key={type}
                                                 type="button"
-                                                onClick={() => setSplitType(type)}
-                                                className={`px-4 py-2 text-sm rounded border min-h-[44px] ${splitType === type ? 'bg-teal-500 text-white' : 'bg-white text-gray-600'}`}
+                                                onClick={() => setShowParticipantSelector(true)}
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 text-left flex items-center justify-between min-h-[44px]"
                                             >
-                                                {type}
+                                                <span className="text-sm">
+                                                    {getSelectedParticipantsDisplay()}
+                                                </span>
+                                                <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path d="M9 5l7 7-7 7"></path>
+                                                </svg>
                                             </button>
-                                        ))}
+                                        ) : (
+                                            /* Inline buttons for small groups */
+                                            <div className="flex flex-wrap gap-2">
+                                                {groupMembers.map(member => {
+                                                    const key = `user_${member.user_id}`;
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            type="button"
+                                                            onClick={() => toggleParticipant(key)}
+                                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedParticipantKeys.includes(key) ? 'bg-teal-100 border-teal-500 text-teal-700' : 'bg-gray-100 border-gray-300'}`}
+                                                        >
+                                                            {member.user_id === currentUserId ? 'You' : member.full_name}
+                                                        </button>
+                                                    );
+                                                })}
+                                                {groupGuests.map(guest => {
+                                                    const key = `guest_${guest.id}`;
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            type="button"
+                                                            onClick={() => toggleParticipant(key)}
+                                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedParticipantKeys.includes(key) ? 'bg-orange-100 border-orange-500 text-orange-700' : 'bg-gray-100 border-gray-300'}`}
+                                                        >
+                                                            {guest.name} <span className="text-gray-400">(guest)</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {splitType === 'ITEMIZED' && (
-                                        <div className="bg-gray-50 p-3 rounded">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <p className="font-semibold text-sm">Assign Items</p>
-                                                <button
-                                                    type="button"
-                                                    onClick={addManualItem}
-                                                    className="text-sm text-teal-600 hover:text-teal-800 px-3 py-2 min-h-[44px]"
-                                                >
-                                                    + Add Item
-                                                </button>
-                                            </div>
-
-                                            {itemizedItems.length === 0 ? (
-                                                <p className="text-sm text-gray-500 text-center py-4">
-                                                    No items yet. Add items manually.
-                                                </p>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {itemizedItems.map((item, idx) => (
-                                                        <div key={idx} className={`bg-white p-3 rounded border ${item.assignments.length === 0 ? 'border-red-300' : 'border-gray-200'}`}>
-                                                            <div className="flex justify-between items-center mb-3">
-                                                                <span className="font-medium text-sm flex-1 pr-2">{item.description}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
-                                                                        ${(item.price / 100).toFixed(2)}
-                                                                    </span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => removeItem(idx)}
-                                                                        className="text-red-400 hover:text-red-600 text-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                                                    >
-                                                                        ×
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Participant Selection - Adaptive UI */}
-                                                            {shouldUseCompactMode() ? (
-                                                                /* Compact mode for large groups */
-                                                                <div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setEditingItemIndex(idx)}
-                                                                        className={`w-full px-4 py-3 rounded-lg border text-left flex items-center justify-between min-h-[44px] ${
-                                                                            item.assignments.length === 0
-                                                                                ? 'border-red-300 bg-red-50 text-red-700'
-                                                                                : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                                                        }`}
-                                                                    >
-                                                                        <span className="text-sm">
-                                                                            {getAssignmentDisplayText(item.assignments)}
-                                                                        </span>
-                                                                        <svg className="w-5 h-5 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path d="M9 5l7 7-7 7"></path>
-                                                                        </svg>
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                /* Inline buttons for small groups */
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {getAllParticipants().map(p => {
-                                                                        const isAssigned = item.assignments.some(
-                                                                            a => a.user_id === p.id && a.is_guest === p.isGuest
-                                                                        );
-
-                                                                        return (
-                                                                            <button
-                                                                                key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}
-                                                                                type="button"
-                                                                                onClick={() => toggleItemAssignment(idx, p)}
-                                                                                className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${
-                                                                                    isAssigned
-                                                                                        ? 'bg-teal-100 border-teal-500 text-teal-700'
-                                                                                        : 'bg-gray-50 border-gray-300 text-gray-500'
-                                                                                }`}
-                                                                            >
-                                                                                {p.name}
-                                                                            </button>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="mt-3 pt-3 border-t">
-                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                    <span className="text-sm text-gray-600">Tax/Tip (split proportionally)</span>
-                                                    <div className="flex items-center">
-                                                        <span className="text-sm mr-2">{currency}</span>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="0.00"
-                                                            step="0.01"
-                                                            className="w-28 sm:w-24 border rounded p-2 text-sm text-right min-h-[44px]"
-                                                            value={taxTipAmount}
-                                                            onChange={(e) => setTaxTipAmount(e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-3 text-right text-base font-semibold">
-                                                Total: {currency} {calculateItemizedTotal()}
-                                            </div>
+                                    {selectedParticipantKeys.length > 0 && (
+                                        <div className="mb-4">
+                                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Paid by:</label>
+                                            <select
+                                                value={payerIsGuest ? `guest_${payerId}` : `user_${payerId}`}
+                                                onChange={(e) => {
+                                                    const [type, id] = e.target.value.split('_');
+                                                    setPayerId(parseInt(id));
+                                                    setPayerIsGuest(type === 'guest');
+                                                }}
+                                                className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-white dark:bg-gray-700 dark:text-gray-100"
+                                            >
+                                                {getPotentialPayers().map(p => (
+                                                    <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
+                                                        {p.name}{p.isGuest ? ' (guest)' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     )}
 
-                                    {splitType !== 'EQUAL' && splitType !== 'ITEMIZED' && (
-                                        <div className="bg-gray-50 p-3 rounded space-y-3">
-                                            {getAllParticipants().map(p => {
-                                                const key = p.isGuest ? `guest_${p.id}` : `user_${p.id}`;
-                                                return (
-                                                    <div key={key} className="flex items-center justify-between gap-3">
-                                                        <span className="text-sm flex-1">
-                                                            {p.name}
-                                                            {p.isGuest && <span className="text-orange-500 ml-1">(guest)</span>}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
+                                    <div className="mb-4">
+                                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Split by:</label>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {['EQUAL', 'EXACT', 'PERCENT', 'SHARES', 'ITEMIZED'].map(type => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    onClick={() => setSplitType(type)}
+                                                    className={`px-4 py-2 text-sm rounded border min-h-[44px] ${splitType === type ? 'bg-teal-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 dark:border-gray-600'}`}
+                                                >
+                                                    {type}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {splitType === 'ITEMIZED' && (
+                                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <p className="font-semibold text-sm dark:text-gray-100">Assign Items</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={addManualItem}
+                                                        className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-2 min-h-[44px]"
+                                                    >
+                                                        + Add Item
+                                                    </button>
+                                                </div>
+
+                                                {itemizedItems.length === 0 ? (
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                                        No items yet. Add items manually.
+                                                    </p>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {itemizedItems.map((item, idx) => (
+                                                            <div key={idx} className={`bg-white dark:bg-gray-800 p-3 rounded border ${item.assignments.length === 0 ? 'border-red-300 dark:border-red-900' : 'border-gray-200 dark:border-gray-600'}`}>
+                                                                <div className="flex justify-between items-center mb-3">
+                                                                    <span className="font-medium text-sm flex-1 pr-2 dark:text-gray-100">{item.description}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-sm text-gray-600 dark:text-gray-400 font-semibold whitespace-nowrap">
+                                                                            ${(item.price / 100).toFixed(2)}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeItem(idx)}
+                                                                            className="text-red-400 hover:text-red-600 text-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Participant Selection - Adaptive UI */}
+                                                                {shouldUseCompactMode() ? (
+                                                                    /* Compact mode for large groups */
+                                                                    <div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setEditingItemIndex(idx)}
+                                                                            className={`w-full px-4 py-3 rounded-lg border text-left flex items-center justify-between min-h-[44px] ${item.assignments.length === 0
+                                                                                ? 'border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                                                                : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                                                                }`}
+                                                                        >
+                                                                            <span className="text-sm">
+                                                                                {getAssignmentDisplayText(item.assignments)}
+                                                                            </span>
+                                                                            <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path d="M9 5l7 7-7 7"></path>
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    /* Inline buttons for small groups */
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {getAllParticipants().map(p => {
+                                                                            const isAssigned = item.assignments.some(
+                                                                                a => a.user_id === p.id && a.is_guest === p.isGuest
+                                                                            );
+
+                                                                            return (
+                                                                                <button
+                                                                                    key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}
+                                                                                    type="button"
+                                                                                    onClick={() => toggleItemAssignment(idx, p)}
+                                                                                    className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${isAssigned
+                                                                                        ? 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
+                                                                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                                                                        }`}
+                                                                                >
+                                                                                    {p.name}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="mt-3 pt-3 border-t dark:border-gray-600">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                        <span className="text-sm text-gray-600 dark:text-gray-400">Tax/Tip (split proportionally)</span>
+                                                        <div className="flex items-center">
+                                                            <span className="text-sm mr-2 dark:text-gray-300">{currency}</span>
                                                             <input
                                                                 type="number"
-                                                                className="w-24 border rounded p-2 text-sm text-right min-h-[44px]"
-                                                                placeholder="0"
-                                                                value={splitDetails[key] || ''}
-                                                                onChange={(e) => handleSplitDetailChange(key, e.target.value)}
+                                                                placeholder="0.00"
+                                                                step="0.01"
+                                                                className="w-28 sm:w-24 border dark:border-gray-600 rounded p-2 text-sm text-right min-h-[44px] dark:bg-gray-800 dark:text-gray-100"
+                                                                value={taxTipAmount}
+                                                                onChange={(e) => setTaxTipAmount(e.target.value)}
                                                             />
-                                                            <span className="text-sm text-gray-500 w-16">
-                                                                {splitType === 'PERCENT' ? '%' : splitType === 'SHARES' ? 'shares' : currency}
-                                                            </span>
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                                </div>
 
-                                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 sm:p-5 flex justify-end space-x-3">
+                                                <div className="mt-3 text-right text-base font-semibold dark:text-white">
+                                                    Total: {currency} {calculateItemizedTotal()}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {splitType !== 'EQUAL' && splitType !== 'ITEMIZED' && (
+                                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded space-y-3">
+                                                {getAllParticipants().map(p => {
+                                                    const key = p.isGuest ? `guest_${p.id}` : `user_${p.id}`;
+                                                    return (
+                                                        <div key={key} className="flex items-center justify-between gap-3">
+                                                            <span className="text-sm flex-1 dark:text-gray-100">
+                                                                {p.name}
+                                                                {p.isGuest && <span className="text-orange-500 dark:text-orange-400 ml-1">(guest)</span>}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-24 border dark:border-gray-600 rounded p-2 text-sm text-right min-h-[44px] dark:bg-gray-800 dark:text-gray-100"
+                                                                    placeholder="0"
+                                                                    value={splitDetails[key] || ''}
+                                                                    onChange={(e) => handleSplitDetailChange(key, e.target.value)}
+                                                                />
+                                                                <span className="text-sm text-gray-500 dark:text-gray-400 w-16">
+                                                                    {splitType === 'PERCENT' ? '%' : splitType === 'SHARES' ? 'shares' : currency}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-5 flex justify-end space-x-3">
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setIsEditing(false);
                                             if (expense) populateFormFromExpense(expense);
                                         }}
-                                        className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded min-h-[44px]"
+                                        className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded min-h-[44px]"
                                     >
                                         Cancel
                                     </button>
@@ -1012,79 +1010,79 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                             /* View Mode */
                             <div className="flex-1 flex flex-col">
                                 <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-                                <div className="mb-6">
-                                    <h3 className="text-2xl font-semibold text-gray-900 mb-1">{expense.description}</h3>
-                                    <p className="text-3xl font-bold text-gray-900">
-                                        {formatMoney(expense.amount, expense.currency)}
-                                    </p>
-                                </div>
+                                    <div className="mb-6">
+                                        <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{expense.description}</h3>
+                                        <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                                            {formatMoney(expense.amount, expense.currency)}
+                                        </p>
+                                    </div>
 
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Date</span>
-                                        <span className="text-gray-900">{formatDate(expense.date)}</span>
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-gray-400">Date</span>
+                                            <span className="text-gray-900 dark:text-gray-100">{formatDate(expense.date)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-gray-400">Paid by</span>
+                                            <span className="text-gray-900 dark:text-gray-100">{getPayerName()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-gray-400">Split type</span>
+                                            <span className="text-gray-900 dark:text-gray-100">{expense.split_type}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Paid by</span>
-                                        <span className="text-gray-900">{getPayerName()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Split type</span>
-                                        <span className="text-gray-900">{expense.split_type}</span>
-                                    </div>
-                                </div>
 
-                                {/* Itemized breakdown for ITEMIZED expenses */}
-                                {expense.split_type === 'ITEMIZED' && expense.items && expense.items.length > 0 && (
-                                    <div className="border-t pt-4 mb-4">
-                                        <h4 className="text-sm font-bold text-gray-700 mb-3">Items</h4>
-                                        <div className="space-y-2">
-                                            {expense.items.filter(i => !i.is_tax_tip).map(item => (
-                                                <div key={item.id} className="flex justify-between items-start text-sm">
-                                                    <div>
-                                                        <span className="text-gray-700">{item.description}</span>
-                                                        <div className="text-xs text-gray-500">
-                                                            {item.assignments.map(a => a.user_name).join(', ')}
+                                    {/* Itemized breakdown for ITEMIZED expenses */}
+                                    {expense.split_type === 'ITEMIZED' && expense.items && expense.items.length > 0 && (
+                                        <div className="border-t dark:border-gray-700 pt-4 mb-4">
+                                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Items</h4>
+                                            <div className="space-y-2">
+                                                {expense.items.filter(i => !i.is_tax_tip).map(item => (
+                                                    <div key={item.id} className="flex justify-between items-start text-sm">
+                                                        <div>
+                                                            <span className="text-gray-700 dark:text-gray-300">{item.description}</span>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {item.assignments.map(a => a.user_name).join(', ')}
+                                                            </div>
                                                         </div>
+                                                        <span className="text-gray-600 dark:text-gray-400">
+                                                            {formatMoney(item.price, expense.currency)}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-gray-600">
-                                                        {formatMoney(item.price, expense.currency)}
+                                                ))}
+                                                {expense.items.filter(i => i.is_tax_tip).map(item => (
+                                                    <div key={item.id} className="flex justify-between text-sm text-gray-500 dark:text-gray-400 italic">
+                                                        <span>{item.description}</span>
+                                                        <span>{formatMoney(item.price, expense.currency)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="border-t dark:border-gray-700 pt-4">
+                                        <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Split Breakdown</h4>
+                                        <div className="space-y-2">
+                                            {expense.splits.map(split => (
+                                                <div key={split.id} className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-700 dark:text-gray-300">
+                                                        {split.user_id === currentUserId && !split.is_guest ? 'You' : split.user_name}
+                                                        {split.is_guest && <span className="text-orange-500 dark:text-orange-400 ml-1">(guest)</span>}
                                                     </span>
-                                                </div>
-                                            ))}
-                                            {expense.items.filter(i => i.is_tax_tip).map(item => (
-                                                <div key={item.id} className="flex justify-between text-sm text-gray-500 italic">
-                                                    <span>{item.description}</span>
-                                                    <span>{formatMoney(item.price, expense.currency)}</span>
+                                                    <span className="text-gray-900 dark:text-gray-100 font-medium">
+                                                        {formatMoney(split.amount_owed, expense.currency)}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                )}
-
-                                <div className="border-t pt-4">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-3">Split Breakdown</h4>
-                                    <div className="space-y-2">
-                                        {expense.splits.map(split => (
-                                            <div key={split.id} className="flex justify-between items-center text-sm">
-                                                <span className="text-gray-700">
-                                                    {split.user_id === currentUserId && !split.is_guest ? 'You' : split.user_name}
-                                                    {split.is_guest && <span className="text-orange-500 ml-1">(guest)</span>}
-                                                </span>
-                                                <span className="text-gray-900 font-medium">
-                                                    {formatMoney(split.amount_owed, expense.currency)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
                                 </div>
 
-                                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 sm:p-5 flex justify-end">
+                                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-5 flex justify-end">
                                     <button
                                         type="button"
                                         onClick={handleClose}
-                                        className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded min-h-[44px]"
+                                        className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded min-h-[44px]"
                                     >
                                         Close
                                     </button>

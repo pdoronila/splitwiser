@@ -76,14 +76,14 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-            <div className="bg-white p-5 rounded-lg shadow-xl w-96">
-                <h2 className="text-xl font-bold mb-4">Settle Up</h2>
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-xl dark:shadow-gray-900/50 w-96">
+                <h2 className="text-xl font-bold mb-4 dark:text-gray-100">Settle Up</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">You paid</label>
+                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">You paid</label>
                         <select
-                            className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-white"
+                            className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-white dark:bg-gray-700 dark:text-gray-100"
                             value={recipientId}
                             onChange={e => setRecipientId(parseInt(e.target.value))}
                         >
@@ -94,17 +94,17 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
                     </div>
 
                     <div className="mb-4 flex items-center space-x-2">
-                         <select
+                        <select
                             value={currency}
                             onChange={(e) => setCurrency(e.target.value)}
-                            className="border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700"
+                            className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700 dark:text-gray-200 dark:bg-gray-700"
                         >
                             {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <input
                             type="number"
                             placeholder="0.00"
-                            className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 text-lg"
+                            className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 text-lg dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                             required
@@ -112,7 +112,7 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
                     </div>
 
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">Save</button>
                     </div>
                 </form>

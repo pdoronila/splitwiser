@@ -343,19 +343,18 @@ const GroupDetailPage: React.FC = () => {
             <div className="space-y-4">
                 {Object.entries(byCurrency).map(([currency, balanceList]) => (
                     <div key={currency}>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-2 uppercase">
+                        <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase">
                             {currency}
                         </h3>
                         <ul className="space-y-2">
                             {balanceList.map((balance, idx) => (
                                 <li key={`${balance.user_id}_${balance.is_guest}_${idx}`}
                                     className="flex justify-between items-center pl-2">
-                                    <span className="text-sm text-gray-700">
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">
                                         {balance.full_name}
                                     </span>
-                                    <span className={`text-sm font-medium ${
-                                        balance.amount >= 0 ? 'text-teal-600' : 'text-red-500'
-                                    }`}>
+                                    <span className={`text-sm font-medium ${balance.amount >= 0 ? 'text-teal-600' : 'text-red-500'
+                                        }`}>
                                         {balance.amount >= 0 ? '+' : ''}
                                         {formatMoney(balance.amount, balance.currency)}
                                     </span>
@@ -376,12 +375,11 @@ const GroupDetailPage: React.FC = () => {
                 {processedBalances.map((balance, idx) => (
                     <li key={`${balance.user_id}_${balance.is_guest}_${idx}`}
                         className="flex justify-between items-center">
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
                             {balance.full_name}
                         </span>
-                        <span className={`text-sm font-medium ${
-                            balance.amount >= 0 ? 'text-teal-600' : 'text-red-500'
-                        }`}>
+                        <span className={`text-sm font-medium ${balance.amount >= 0 ? 'text-teal-600' : 'text-red-500'
+                            }`}>
                             {balance.amount >= 0 ? '+' : ''}
                             {formatMoney(balance.amount, balance.currency)}
                         </span>
@@ -393,20 +391,20 @@ const GroupDetailPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-100">
-                <div className="text-gray-500">Loading...</div>
+            <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
+                <div className="text-gray-500 dark:text-gray-400">Loading...</div>
             </div>
         );
     }
 
     if (error || !group) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-100">
+            <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
                 <div className="text-center">
-                    <div className="text-red-500 mb-4">{error || 'Group not found'}</div>
+                    <div className="text-red-500 dark:text-red-400 mb-4">{error || 'Group not found'}</div>
                     <button
                         onClick={() => navigate('/')}
-                        className="text-teal-600 hover:text-teal-800"
+                        className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
                     >
                         Back to Dashboard
                     </button>
@@ -418,31 +416,31 @@ const GroupDetailPage: React.FC = () => {
     const isOwner = group.created_by_id === user?.id;
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
             {/* Header */}
-            <header className="bg-white shadow-sm">
+            <header className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50">
                 <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 lg:gap-4 min-w-0">
                             <button
                                 onClick={() => navigate('/')}
-                                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
                             >
                                 &larr;
                             </button>
-                            <h1 className="text-lg lg:text-2xl font-bold text-gray-900 truncate">{group.name}</h1>
+                            <h1 className="text-lg lg:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{group.name}</h1>
                         </div>
                         {isOwner && (
                             <div className="flex gap-1 lg:gap-2 flex-shrink-0">
                                 <button
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                                    className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                 >
                                     Edit
                                 </button>
                                 <button
                                     onClick={() => setIsDeleteConfirmOpen(true)}
-                                    className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                    className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                                 >
                                     Delete
                                 </button>
@@ -454,13 +452,13 @@ const GroupDetailPage: React.FC = () => {
 
             <main className="max-w-5xl mx-auto px-4 lg:px-6 py-4 lg:py-6">
                 {/* Balances Section - Priority #1 */}
-                <div className="bg-white rounded shadow-sm p-4 lg:p-6 mb-4">
+                <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 p-4 lg:p-6 mb-4">
                     <div className="flex justify-between items-center mb-3 lg:mb-4 gap-2">
-                        <h2 className="text-base lg:text-lg font-medium text-gray-900">Group Balances</h2>
+                        <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">Group Balances</h2>
                         {group?.default_currency && balances.length > 0 && (
                             <button
                                 onClick={() => setShowInGroupCurrency(!showInGroupCurrency)}
-                                className="text-xs px-2 lg:px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 whitespace-nowrap"
+                                className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
                             >
                                 {showInGroupCurrency
                                     ? `By currency`
@@ -470,7 +468,7 @@ const GroupDetailPage: React.FC = () => {
                     </div>
 
                     {balances.length === 0 ? (
-                        <p className="text-gray-500 italic text-sm">No balances yet</p>
+                        <p className="text-gray-500 dark:text-gray-400 italic text-sm">No balances yet</p>
                     ) : (
                         <div>
                             {!showInGroupCurrency && renderBalancesByCurrency()}
@@ -490,42 +488,42 @@ const GroupDetailPage: React.FC = () => {
                 </div>
 
                 {/* Expenses Section - Priority #2 */}
-                <div className="bg-white rounded shadow-sm p-4 lg:p-6 mb-4">
-                    <h2 className="text-base lg:text-lg font-medium text-gray-900 mb-3 lg:mb-4">
+                <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 p-4 lg:p-6 mb-4">
+                    <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 lg:mb-4">
                         Recent Expenses
                     </h2>
 
                     {expenses.length === 0 ? (
-                        <p className="text-gray-500 italic text-sm">No expenses yet</p>
+                        <p className="text-gray-500 dark:text-gray-400 italic text-sm">No expenses yet</p>
                     ) : (
                         <div className="divide-y">
                             {expenses.slice(0, 5).map(expense => (
                                 <div
                                     key={expense.id}
-                                    className="py-3 flex items-start lg:items-center justify-between cursor-pointer hover:bg-gray-50 -mx-2 px-2 rounded gap-2"
+                                    className="py-3 flex items-start lg:items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded gap-2"
                                     onClick={() => handleExpenseClick(expense.id)}
                                 >
                                     <div className="flex items-start lg:items-center gap-2 lg:gap-4 min-w-0 flex-1">
-                                        <div className="text-xs text-gray-500 w-10 lg:w-12 flex-shrink-0">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 w-10 lg:w-12 flex-shrink-0">
                                             {formatDate(expense.date)}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="text-sm font-medium text-gray-900 truncate">
+                                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                                 {expense.description}
                                             </div>
-                                            <div className="text-xs text-gray-500">
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                                 {getPayerName(expense.payer_id, expense.payer_is_guest)} paid
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-xs lg:text-sm font-medium text-gray-900 flex-shrink-0">
+                                    <div className="text-xs lg:text-sm font-medium text-gray-900 dark:text-gray-100 flex-shrink-0">
                                         {formatMoney(expense.amount, expense.currency)}
                                     </div>
                                 </div>
                             ))}
                             {expenses.length > 5 && (
                                 <div className="pt-3 text-center">
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
                                         +{expenses.length - 5} more expenses
                                     </span>
                                 </div>
@@ -535,40 +533,40 @@ const GroupDetailPage: React.FC = () => {
                 </div>
 
                 {/* Members Section - Collapsible */}
-                <div className="bg-white rounded shadow-sm">
+                <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50">
                     <button
                         onClick={() => setIsMembersExpanded(!isMembersExpanded)}
-                        className="w-full p-4 lg:p-6 flex items-center justify-between text-left hover:bg-gray-50"
+                        className="w-full p-4 lg:p-6 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                        <h2 className="text-base lg:text-lg font-medium text-gray-900">
+                        <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">
                             Members ({group.members.length + (group.guests?.length || 0)})
                         </h2>
-                        <span className="text-gray-400 text-xl">
+                        <span className="text-gray-400 dark:text-gray-500 text-xl">
                             {isMembersExpanded ? '−' : '+'}
                         </span>
                     </button>
 
                     {isMembersExpanded && (
-                        <div className="px-4 lg:px-6 pb-4 lg:pb-6 border-t">
+                        <div className="px-4 lg:px-6 pb-4 lg:pb-6 border-t dark:border-gray-700">
                             <ul className="space-y-2 lg:space-y-3 mb-4 mt-4">
                                 {group.members.map(member => (
                                     <li key={member.id} className="flex items-center justify-between">
                                         <div>
-                                            <div className="text-sm font-medium text-gray-900">
+                                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {member.full_name}
                                                 {member.user_id === group.created_by_id && (
-                                                    <span className="ml-2 text-xs text-gray-500">(owner)</span>
+                                                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(owner)</span>
                                                 )}
                                                 {member.user_id === user?.id && (
-                                                    <span className="ml-2 text-xs text-teal-600">(you)</span>
+                                                    <span className="ml-2 text-xs text-teal-600 dark:text-teal-400">(you)</span>
                                                 )}
                                             </div>
-                                            <div className="text-xs text-gray-500">{member.email}</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">{member.email}</div>
                                         </div>
                                         {member.user_id !== group.created_by_id && (isOwner || member.user_id === user?.id) && (
                                             <button
                                                 onClick={() => handleRemoveMember(member.user_id)}
-                                                className="text-xs text-red-500 hover:text-red-700"
+                                                className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                             >
                                                 {member.user_id === user?.id ? 'Leave' : 'Remove'}
                                             </button>
@@ -578,22 +576,22 @@ const GroupDetailPage: React.FC = () => {
                                 {group.guests?.map(guest => (
                                     <li key={`guest-${guest.id}`} className="flex items-center justify-between">
                                         <div>
-                                            <div className="text-sm font-medium text-gray-900">
+                                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {guest.name}
-                                                <span className="ml-2 text-xs text-orange-500">(guest)</span>
+                                                <span className="ml-2 text-xs text-orange-500 dark:text-orange-400">(guest)</span>
                                             </div>
-                                            <div className="text-xs text-gray-400">No account</div>
+                                            <div className="text-xs text-gray-400 dark:text-gray-500">No account</div>
                                         </div>
                                         <div className="flex space-x-2">
                                             <button
                                                 onClick={() => handleClaimGuest(guest.id)}
-                                                className="text-xs text-teal-500 hover:text-teal-700"
+                                                className="text-xs text-teal-500 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300"
                                             >
                                                 Claim
                                             </button>
                                             <button
                                                 onClick={() => handleRemoveGuest(guest.id)}
-                                                className="text-xs text-red-500 hover:text-red-700"
+                                                className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                             >
                                                 Remove
                                             </button>
@@ -607,7 +605,7 @@ const GroupDetailPage: React.FC = () => {
                                     <input
                                         type="email"
                                         placeholder="Add member by email"
-                                        className="flex-1 text-xs lg:text-sm p-2 border rounded focus:outline-none focus:border-teal-500"
+                                        className="flex-1 text-xs lg:text-sm p-2 border dark:border-gray-600 rounded focus:outline-none focus:border-teal-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                         value={newMemberEmail}
                                         onChange={(e) => setNewMemberEmail(e.target.value)}
                                         required
@@ -620,7 +618,7 @@ const GroupDetailPage: React.FC = () => {
                                     </button>
                                 </div>
                                 {addMemberError && (
-                                    <p className="mt-2 text-xs text-red-500">{addMemberError}</p>
+                                    <p className="mt-2 text-xs text-red-500 dark:text-red-400">{addMemberError}</p>
                                 )}
                             </form>
 
@@ -629,7 +627,7 @@ const GroupDetailPage: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder="Add guest by name"
-                                        className="flex-1 text-xs lg:text-sm p-2 border rounded focus:outline-none focus:border-orange-500"
+                                        className="flex-1 text-xs lg:text-sm p-2 border dark:border-gray-600 rounded focus:outline-none focus:border-orange-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                         value={newGuestName}
                                         onChange={(e) => setNewGuestName(e.target.value)}
                                         required
@@ -643,7 +641,7 @@ const GroupDetailPage: React.FC = () => {
                                     </button>
                                 </div>
                                 {addGuestError && (
-                                    <p className="mt-2 text-xs text-red-500">{addGuestError}</p>
+                                    <p className="mt-2 text-xs text-red-500 dark:text-red-400">{addGuestError}</p>
                                 )}
                             </form>
                         </div>

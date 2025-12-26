@@ -237,7 +237,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
-@app.post("/token", response_model=schemas.Token)
+@app.post("/token")
 def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):
     user = get_user_by_email(db, form_data.username)
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -246,11 +246,84 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Create access token
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Create refresh token
+    refresh_token = auth.create_refresh_token()
+    refresh_token_hash = auth.hash_token(refresh_token)
+    
+    # Store refresh token in database
+    db_refresh_token = models.RefreshToken(
+        user_id=user.id,
+        token_hash=refresh_token_hash,
+        expires_at=auth.get_refresh_token_expiry()
+    )
+    db.add(db_refresh_token)
+    db.commit()
+    
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+@app.post("/auth/refresh")
+def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access token"""
+    token_hash = auth.hash_token(request.refresh_token)
+    
+    # Find the refresh token in database
+    db_token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token_hash == token_hash,
+        models.RefreshToken.revoked == False,
+        models.RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+    
+    if not db_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
+    
+    # Get user
+    user = db.query(models.User).filter(models.User.id == db_token.user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    
+    # Create new access token
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@app.post("/auth/logout")
+def logout(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Revoke a refresh token (logout)"""
+    token_hash = auth.hash_token(request.refresh_token)
+    
+    # Find and revoke the token
+    db_token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token_hash == token_hash
+    ).first()
+    
+    if db_token:
+        db_token.revoked = True
+        db.commit()
+    
+    return {"message": "Logged out successfully"}
 
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: Annotated[models.User, Depends(get_current_user)]):
@@ -926,83 +999,114 @@ class Balance(BaseModel):
     full_name: str
     amount: float # Positive means you are owed, negative means you owe
     currency: str
+    is_guest: bool = False
+    group_name: Optional[str] = None
+    group_id: Optional[int] = None
 
 @app.get("/balances", response_model=dict[str, list[Balance]])
 def get_balances(current_user: Annotated[models.User, Depends(get_current_user)], db: Session = Depends(get_db)):
     # Calculate balances for current user
-    # 1. Money user paid
-    paid_expenses = db.query(models.Expense).filter(models.Expense.payer_id == current_user.id).all()
+    # Strategy: 
+    # - For expenses WITH group_id: consolidate by (group_id, currency)
+    # - For expenses WITHOUT group_id (1-to-1 IOUs): track by (user_id, currency)
+    
+    # 1. Money user paid (only non-guest expenses where I'm the payer)
+    paid_expenses = db.query(models.Expense).filter(
+        models.Expense.payer_id == current_user.id,
+        models.Expense.payer_is_guest == False
+    ).all()
 
-    # 2. Money user owes (splits)
-    my_splits = db.query(models.ExpenseSplit).filter(models.ExpenseSplit.user_id == current_user.id).all()
+    # 2. Money user owes (only non-guest splits where I'm a participant)
+    my_splits = db.query(models.ExpenseSplit).filter(
+        models.ExpenseSplit.user_id == current_user.id,
+        models.ExpenseSplit.is_guest == False
+    ).all()
 
-    # Aggregate by user/currency
-    # We need to know who owes whom.
-    # If I paid 100, and split is 50/50 with User B.
-    # I paid 100. My split is 50. User B split is 50.
-    # User B owes me 50.
-
-    # Let's build a graph: (User A, User B, Amount, Currency)
-
-    balances = {} # (user_id, currency) -> amount
+    # Individual user balances (for 1-to-1 IOUs): (user_id, currency) -> amount
+    user_balances = {}
+    
+    # Group balances (for group expenses): (group_id, currency) -> amount
+    group_balances = {}
 
     # Analyze expenses I paid
     for expense in paid_expenses:
         splits = db.query(models.ExpenseSplit).filter(models.ExpenseSplit.expense_id == expense.id).all()
         for split in splits:
-            if split.user_id == current_user.id:
+            if split.user_id == current_user.id and not split.is_guest:
                 continue # I don't owe myself
 
             # Someone else owes me 'split.amount_owed'
-            key = (split.user_id, expense.currency)
-            balances[key] = balances.get(key, 0) + split.amount_owed
+            if expense.group_id:
+                # Group expense: consolidate by group
+                key = (expense.group_id, expense.currency)
+                group_balances[key] = group_balances.get(key, 0) + split.amount_owed
+            else:
+                # 1-to-1 IOU: track individually
+                if split.is_guest:
+                    # Shouldn't happen for non-group expenses, but handle it
+                    guest = db.query(models.GuestMember).filter(models.GuestMember.id == split.user_id).first()
+                    if guest:
+                        key = (guest.group_id, expense.currency)
+                        group_balances[key] = group_balances.get(key, 0) + split.amount_owed
+                else:
+                    key = (split.user_id, expense.currency)
+                    user_balances[key] = user_balances.get(key, 0) + split.amount_owed
 
     # Analyze expenses I owe (someone else paid)
     for split in my_splits:
         expense = db.query(models.Expense).filter(models.Expense.id == split.expense_id).first()
-        if expense.payer_id == current_user.id:
+        if not expense:
+            continue
+            
+        if expense.payer_id == current_user.id and not expense.payer_is_guest:
             continue # I paid, handled above
 
         # I owe the payer 'split.amount_owed'
-        key = (expense.payer_id, expense.currency)
-        balances[key] = balances.get(key, 0) - split.amount_owed
+        if expense.group_id:
+            # Group expense: consolidate by group
+            key = (expense.group_id, expense.currency)
+            group_balances[key] = group_balances.get(key, 0) - split.amount_owed
+        else:
+            # 1-to-1 IOU: track individually
+            if expense.payer_is_guest:
+                # Shouldn't happen for non-group expenses, but handle it
+                guest = db.query(models.GuestMember).filter(models.GuestMember.id == expense.payer_id).first()
+                if guest:
+                    key = (guest.group_id, expense.currency)
+                    group_balances[key] = group_balances.get(key, 0) - split.amount_owed
+            else:
+                key = (expense.payer_id, expense.currency)
+                user_balances[key] = user_balances.get(key, 0) - split.amount_owed
 
     result = {"balances": []}
 
-    # Currency Conversion for aggregation
-    # Since we are using a free API (or mock), let's implement a simple converter
-    # Base currency: USD
-
-    # Mock Exchange Rates (In production, fetch from API like openexchangerates.org or exchangeratesapi.io)
-    # Using a dictionary for stability and no API key requirement for this demo
-    exchange_rates = {
-        "USD": 1.0,
-        "EUR": 0.92,
-        "GBP": 0.79,
-        "JPY": 149.5,
-        "CAD": 1.38
-    }
-
-    def convert_to_usd(amount, currency):
-        if currency not in exchange_rates:
-             return amount # Fallback
-        return amount / exchange_rates[currency]
-
-    # While we return the raw balances per currency to the frontend for detailed view,
-    # The frontend might want a "Total in USD" estimate.
-    # The current requirement says "automatically settle-up in another currency".
-    # This implies we might need a conversion endpoint or perform it here.
-
-    # For now, let's keep the detailed breakdown.
-    # But let's add a "simplify_debts" equivalent that does cross-currency?
-    # The requirement: "look up the currency exchange for the payment date and automatically settle-up in another currency"
-
-    for (uid, currency), amount in balances.items():
+    # Add individual user balances (1-to-1 IOUs only)
+    for (uid, currency), amount in user_balances.items():
         if amount != 0:
-            # Get user's full name
             user = db.query(models.User).filter(models.User.id == uid).first()
             full_name = user.full_name if user else f"User {uid}"
-            result["balances"].append(Balance(user_id=uid, full_name=full_name, amount=amount, currency=currency))
+            result["balances"].append(Balance(
+                user_id=uid, 
+                full_name=full_name, 
+                amount=amount, 
+                currency=currency,
+                is_guest=False
+            ))
+
+    # Add consolidated group balances (all group expenses)
+    for (group_id, currency), amount in group_balances.items():
+        if amount != 0:
+            group = db.query(models.Group).filter(models.Group.id == group_id).first()
+            group_name = group.name if group else f"Group {group_id}"
+            result["balances"].append(Balance(
+                user_id=0,  # Placeholder, not used for groups
+                full_name=group_name,  # Display group name
+                amount=amount,
+                currency=currency,
+                is_guest=True,  # Using this flag to indicate it's a group balance
+                group_name=group_name,
+                group_id=group_id
+            ))
 
     return result
 

@@ -24,6 +24,7 @@ const Login = () => {
 
       const data = await response.json();
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('refreshToken', data.refresh_token);
       window.location.href = '/';
     } catch (err) {
       setError('Invalid credentials');
@@ -31,15 +32,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded shadow">
-        <h2 className="text-3xl font-extrabold text-gray-900 text-center">Sign in</h2>
-        {error && <div className="text-red-500 text-center">{error}</div>}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded shadow dark:shadow-gray-900/50">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 text-center">Sign in</h2>
+        {error && <div className="text-red-500 dark:text-red-400 text-center">{error}</div>}
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <input
             type="email"
             required
-            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -47,7 +48,7 @@ const Login = () => {
           <input
             type="password"
             required
-            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -59,9 +60,9 @@ const Login = () => {
             Sign in
           </button>
         </form>
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/register" className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
             Register
           </Link>
         </p>

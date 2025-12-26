@@ -85,7 +85,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
     const [payerIsGuest, setPayerIsGuest] = useState<boolean>(false);
 
     // Split details state - keyed by "user_<id>" or "guest_<id>"
-    const [splitDetails, setSplitDetails] = useState<{[key: string]: number}>({});
+    const [splitDetails, setSplitDetails] = useState<{ [key: string]: number }>({});
 
     // Get current selected group
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
@@ -173,12 +173,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
                     amount_owed: Math.round(parseFloat(splitDetails[key]?.toString() || '0') * 100)
                 };
             });
-             // Verify sum
-             const sum = splits.reduce((acc, s) => acc + s.amount_owed, 0);
-             if (Math.abs(sum - totalAmountCents) > 1) {
-                 alert(`Amounts do not sum to total. Total: ${totalAmountCents/100}, Sum: ${sum/100}`);
-                 return;
-             }
+            // Verify sum
+            const sum = splits.reduce((acc, s) => acc + s.amount_owed, 0);
+            if (Math.abs(sum - totalAmountCents) > 1) {
+                alert(`Amounts do not sum to total. Total: ${totalAmountCents / 100}, Sum: ${sum / 100}`);
+                return;
+            }
         } else if (splitType === 'PERCENT') {
             let runningTotal = 0;
             // Get all percentages
@@ -193,8 +193,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
             // Verify percent sum
             const percentSum = shares.reduce((acc, s) => acc + s.percent, 0);
             if (Math.abs(percentSum - 100) > 0.1) {
-                 alert(`Percentages must sum to 100%. Current: ${percentSum}%`);
-                 return;
+                alert(`Percentages must sum to 100%. Current: ${percentSum}%`);
+                return;
             }
 
             splits = shares.map((s, index) => {
@@ -227,12 +227,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
 
             const totalShares = sharesMap.reduce((acc, s) => acc + s.shares, 0);
             if (totalShares === 0) {
-                 alert("Total shares cannot be zero");
-                 return;
+                alert("Total shares cannot be zero");
+                return;
             }
             let runningTotal = 0;
             splits = sharesMap.map((s, index) => {
-                 if (index === sharesMap.length - 1) {
+                if (index === sharesMap.length - 1) {
                     return {
                         user_id: s.participant.id,
                         is_guest: s.participant.isGuest,
@@ -363,7 +363,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
         if (selectedFriendIds.includes(id)) {
             setSelectedFriendIds(selectedFriendIds.filter(fid => fid !== id));
             // Cleanup split details
-            const newDetails = {...splitDetails};
+            const newDetails = { ...splitDetails };
             delete newDetails[`user_${id}`];
             setSplitDetails(newDetails);
         } else {
@@ -375,7 +375,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
         if (selectedGuestIds.includes(id)) {
             setSelectedGuestIds(selectedGuestIds.filter(gid => gid !== id));
             // Cleanup split details
-            const newDetails = {...splitDetails};
+            const newDetails = { ...splitDetails };
             delete newDetails[`guest_${id}`];
             setSplitDetails(newDetails);
         } else {
@@ -384,7 +384,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
     };
 
     const handleSplitDetailChange = (key: string, value: string) => {
-        setSplitDetails({...splitDetails, [key]: parseFloat(value)});
+        setSplitDetails({ ...splitDetails, [key]: parseFloat(value) });
     };
 
     const getParticipantName = (p: Participant) => {
@@ -425,7 +425,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
     const handleParticipantSelectorConfirm = (itemIdx: number, selectedParticipants: Participant[]) => {
         setItemizedItems(prev => {
             const updated = [...prev];
-            const item = {...updated[itemIdx]};
+            const item = { ...updated[itemIdx] };
             item.assignments = selectedParticipants.map(p => ({
                 user_id: p.id,
                 is_guest: p.isGuest
@@ -522,7 +522,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
     const toggleItemAssignment = (itemIdx: number, participant: Participant) => {
         setItemizedItems(prev => {
             const updated = [...prev];
-            const item = {...updated[itemIdx]};
+            const item = { ...updated[itemIdx] };
 
             const existingIdx = item.assignments.findIndex(
                 a => a.user_id === participant.id && a.is_guest === participant.isGuest
@@ -595,7 +595,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
             {showScanner && (
                 <ReceiptScanner
                     onItemsDetected={handleScannedItems}
@@ -625,320 +625,323 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onEx
                     itemDescription={itemizedItems[editingItemIndex]?.description || ''}
                 />
             )}
-            <div className="bg-white w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl overflow-y-auto flex flex-col">
-                <div className="sticky top-0 bg-white z-10 p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Add an expense</h2>
+            <div className="bg-white dark:bg-gray-800 w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
+                <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 className="text-xl font-bold dark:text-gray-100">Add an expense</h2>
                     <button
                         type="button"
                         onClick={() => setShowScanner(true)}
-                        className="text-sm bg-indigo-100 text-indigo-700 px-3 py-2 rounded hover:bg-indigo-200 min-h-[44px]"
+                        className="text-sm bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-2 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 min-h-[44px]"
                     >
                         Scan Receipt
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
                     <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-                    {scannedItems.length > 0 && (
-                        <div className="mb-4 bg-gray-50 p-3 rounded text-sm">
-                            <p className="font-semibold mb-1">Scanned Items:</p>
-                            <ul className="list-disc pl-4 text-gray-600">
-                                {scannedItems.map((item, idx) => (
-                                    <li key={idx}>{item.description}: ${(item.price/100).toFixed(2)}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {groups.length > 0 && (
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Group (optional):</label>
-                            <select
-                                value={selectedGroupId || ''}
-                                onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
-                                className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-white"
-                            >
-                                <option value="">No group</option>
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                        {scannedItems.length > 0 && (
+                            <div className="mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded text-sm">
+                                <p className="font-semibold mb-1 dark:text-gray-100">Scanned Items:</p>
+                                <ul className="list-disc pl-4 text-gray-600 dark:text-gray-300">
+                                    {scannedItems.map((item, idx) => (
+                                        <li key={idx}>{item.description}: ${(item.price / 100).toFixed(2)}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {groups.length > 0 && (
+                            <div className="mb-4">
+                                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Group (optional):</label>
+                                <select
+                                    value={selectedGroupId || ''}
+                                    onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-white dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    <option value="">No group</option>
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">With you and:</label>
-                        {getAvailableParticipants().length > 6 ? (
-                            /* Compact mode for large groups */
-                            <button
-                                type="button"
-                                onClick={() => setShowParticipantSelector(true)}
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 text-left flex items-center justify-between min-h-[44px]"
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">With you and:</label>
+                            {friends.length === 0 && groupGuests.length === 0 ? (
+                                /* No participants available */
+                                <div className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
+                                    Add friends or select a group with members to split expenses
+                                </div>
+                            ) : getAvailableParticipants().length > 6 ? (
+                                /* Compact mode for large groups */
+                                <button
+                                    type="button"
+                                    onClick={() => setShowParticipantSelector(true)}
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 text-left flex items-center justify-between min-h-[44px]"
+                                >
+                                    <span className="text-sm">
+                                        {getSelectedParticipantsDisplay()}
+                                    </span>
+                                    <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </button>
+                            ) : (
+                                /* Inline buttons for small groups */
+                                <div className="flex flex-wrap gap-2">
+                                    {friends.map(friend => (
+                                        <button
+                                            key={friend.id}
+                                            type="button"
+                                            onClick={() => toggleFriend(friend.id)}
+                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedFriendIds.includes(friend.id) ? 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'}`}
+                                        >
+                                            {friend.full_name}
+                                        </button>
+                                    ))}
+                                    {/* Show guests if a group is selected */}
+                                    {groupGuests.map(guest => (
+                                        <button
+                                            key={`guest-${guest.id}`}
+                                            type="button"
+                                            onClick={() => toggleGuest(guest.id)}
+                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedGuestIds.includes(guest.id) ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-500 dark:border-orange-600 text-orange-700 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'}`}
+                                        >
+                                            {guest.name} <span className="text-gray-400 dark:text-gray-500">(guest)</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Payer selection */}
+                        {(selectedFriendIds.length > 0 || selectedGuestIds.length > 0) && (
+                            <div className="mb-4">
+                                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Paid by:</label>
+                                <select
+                                    value={payerIsGuest ? `guest_${payerId}` : `user_${payerId}`}
+                                    onChange={(e) => {
+                                        const [type, id] = e.target.value.split('_');
+                                        setPayerId(parseInt(id));
+                                        setPayerIsGuest(type === 'guest');
+                                    }}
+                                    className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-white dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    {getPotentialPayers().map(p => (
+                                        <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
+                                            {p.name}{p.isGuest ? ' (guest)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <div className="mb-4">
+                            <input
+                                type="text"
+                                placeholder="Enter a description"
+                                className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="mb-4 flex items-center space-x-2">
+                            <select
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700 dark:text-gray-200 dark:bg-gray-700"
                             >
-                                <span className="text-sm">
-                                    {getSelectedParticipantsDisplay()}
-                                </span>
-                                <svg className="w-5 h-5 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </button>
-                        ) : (
-                            /* Inline buttons for small groups */
-                            <div className="flex flex-wrap gap-2">
-                                {friends.map(friend => (
+                                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                className={`w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 text-lg dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 ${splitType === 'ITEMIZED' ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                value={splitType === 'ITEMIZED' ? calculateItemizedTotal() : amount}
+                                onChange={e => setAmount(e.target.value)}
+                                disabled={splitType === 'ITEMIZED'}
+                                required={splitType !== 'ITEMIZED'}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
+                            <input
+                                type="date"
+                                className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
+                                value={expenseDate}
+                                onChange={(e) => setExpenseDate(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Split by:</label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {['EQUAL', 'EXACT', 'PERCENT', 'SHARES', 'ITEMIZED'].map(type => (
                                     <button
-                                        key={friend.id}
+                                        key={type}
                                         type="button"
-                                        onClick={() => toggleFriend(friend.id)}
-                                        className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedFriendIds.includes(friend.id) ? 'bg-teal-100 border-teal-500 text-teal-700' : 'bg-gray-100 border-gray-300'}`}
+                                        onClick={() => setSplitType(type)}
+                                        className={`px-4 py-2 text-sm rounded border min-h-[44px] ${splitType === type ? 'bg-teal-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 dark:border-gray-600'}`}
                                     >
-                                        {friend.full_name}
-                                    </button>
-                                ))}
-                                {/* Show guests if a group is selected */}
-                                {groupGuests.map(guest => (
-                                    <button
-                                        key={`guest-${guest.id}`}
-                                        type="button"
-                                        onClick={() => toggleGuest(guest.id)}
-                                        className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedGuestIds.includes(guest.id) ? 'bg-orange-100 border-orange-500 text-orange-700' : 'bg-gray-100 border-gray-300'}`}
-                                    >
-                                        {guest.name} <span className="text-gray-400">(guest)</span>
+                                        {type}
                                     </button>
                                 ))}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Payer selection */}
-                    {(selectedFriendIds.length > 0 || selectedGuestIds.length > 0) && (
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Paid by:</label>
-                            <select
-                                value={payerIsGuest ? `guest_${payerId}` : `user_${payerId}`}
-                                onChange={(e) => {
-                                    const [type, id] = e.target.value.split('_');
-                                    setPayerId(parseInt(id));
-                                    setPayerIsGuest(type === 'guest');
-                                }}
-                                className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-white"
-                            >
-                                {getPotentialPayers().map(p => (
-                                    <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
-                                        {p.name}{p.isGuest ? ' (guest)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                            {splitType === 'ITEMIZED' && (
+                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <p className="font-semibold text-sm dark:text-gray-100">Assign Items</p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowScanner(true)}
+                                                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 px-3 py-2 min-h-[44px]"
+                                            >
+                                                + Scan
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={addManualItem}
+                                                className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-2 min-h-[44px]"
+                                            >
+                                                + Add
+                                            </button>
+                                        </div>
+                                    </div>
 
-                    <div className="mb-4">
-                        <input
-                            type="text"
-                            placeholder="Enter a description"
-                            className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            required
-                        />
-                    </div>
+                                    {itemizedItems.length === 0 ? (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                            No items yet. Scan a receipt or add items manually.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {itemizedItems.map((item, idx) => (
+                                                <div key={idx} className={`bg-white dark:bg-gray-800 p-3 rounded border ${item.assignments.length === 0 ? 'border-red-300 dark:border-red-900' : 'border-gray-200 dark:border-gray-600'}`}>
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="font-medium text-sm flex-1 pr-2 dark:text-gray-100">{item.description}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 dark:text-gray-400 font-semibold whitespace-nowrap">
+                                                                ${(item.price / 100).toFixed(2)}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeItem(idx)}
+                                                                className="text-red-400 hover:text-red-600 text-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                    <div className="mb-4 flex items-center space-x-2">
-                        <select
-                            value={currency}
-                            onChange={(e) => setCurrency(e.target.value)}
-                            className="border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700"
-                        >
-                            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <input
-                            type="number"
-                            placeholder="0.00"
-                            className={`w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500 text-lg ${splitType === 'ITEMIZED' ? 'bg-gray-100 text-gray-500' : ''}`}
-                            value={splitType === 'ITEMIZED' ? calculateItemizedTotal() : amount}
-                            onChange={e => setAmount(e.target.value)}
-                            disabled={splitType === 'ITEMIZED'}
-                            required={splitType !== 'ITEMIZED'}
-                        />
-                    </div>
+                                                    {/* Participant Selection - Adaptive UI */}
+                                                    {shouldUseCompactMode() ? (
+                                                        /* Compact mode for large groups */
+                                                        <div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingItemIndex(idx)}
+                                                                className={`w-full px-4 py-3 rounded-lg border text-left flex items-center justify-between min-h-[44px] ${item.assignments.length === 0
+                                                                    ? 'border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                                                    : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                                                    }`}
+                                                            >
+                                                                <span className="text-sm">
+                                                                    {getAssignmentDisplayText(item.assignments)}
+                                                                </span>
+                                                                <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path d="M9 5l7 7-7 7"></path>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        /* Inline buttons for small groups */
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {getAllParticipants().map(p => {
+                                                                const isAssigned = item.assignments.some(
+                                                                    a => a.user_id === p.id && a.is_guest === p.isGuest
+                                                                );
 
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Date:</label>
-                        <input
-                            type="date"
-                            className="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-teal-500"
-                            value={expenseDate}
-                            onChange={(e) => setExpenseDate(e.target.value)}
-                            required
-                        />
-                    </div>
+                                                                return (
+                                                                    <button
+                                                                        key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}
+                                                                        type="button"
+                                                                        onClick={() => toggleItemAssignment(idx, p)}
+                                                                        className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${isAssigned
+                                                                            ? 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
+                                                                            : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                                                            }`}
+                                                                    >
+                                                                        {getParticipantName(p)}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
-                    <div className="mb-4">
-                         <label className="block text-gray-700 text-sm font-bold mb-2">Split by:</label>
-                         <div className="flex flex-wrap gap-2 mb-2">
-                             {['EQUAL', 'EXACT', 'PERCENT', 'SHARES', 'ITEMIZED'].map(type => (
-                                 <button
-                                    key={type}
-                                    type="button"
-                                    onClick={() => setSplitType(type)}
-                                    className={`px-4 py-2 text-sm rounded border min-h-[44px] ${splitType === type ? 'bg-teal-500 text-white' : 'bg-white text-gray-600'}`}
-                                 >
-                                     {type}
-                                 </button>
-                             ))}
-                         </div>
-
-                         {splitType === 'ITEMIZED' && (
-                             <div className="bg-gray-50 p-3 rounded">
-                                 <div className="flex justify-between items-center mb-3">
-                                     <p className="font-semibold text-sm">Assign Items</p>
-                                     <div className="flex gap-2">
-                                         <button
-                                             type="button"
-                                             onClick={() => setShowScanner(true)}
-                                             className="text-sm text-indigo-600 hover:text-indigo-800 px-3 py-2 min-h-[44px]"
-                                         >
-                                             + Scan
-                                         </button>
-                                         <button
-                                             type="button"
-                                             onClick={addManualItem}
-                                             className="text-sm text-teal-600 hover:text-teal-800 px-3 py-2 min-h-[44px]"
-                                         >
-                                             + Add
-                                         </button>
-                                     </div>
-                                 </div>
-
-                                 {itemizedItems.length === 0 ? (
-                                     <p className="text-sm text-gray-500 text-center py-4">
-                                         No items yet. Scan a receipt or add items manually.
-                                     </p>
-                                 ) : (
-                                     <div className="space-y-3">
-                                         {itemizedItems.map((item, idx) => (
-                                             <div key={idx} className={`bg-white p-3 rounded border ${item.assignments.length === 0 ? 'border-red-300' : 'border-gray-200'}`}>
-                                                 <div className="flex justify-between items-center mb-3">
-                                                     <span className="font-medium text-sm flex-1 pr-2">{item.description}</span>
-                                                     <div className="flex items-center gap-2">
-                                                         <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
-                                                             ${(item.price / 100).toFixed(2)}
-                                                         </span>
-                                                         <button
-                                                             type="button"
-                                                             onClick={() => removeItem(idx)}
-                                                             className="text-red-400 hover:text-red-600 text-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                                         >
-                                                             ×
-                                                         </button>
-                                                     </div>
-                                                 </div>
-
-                                                 {/* Participant Selection - Adaptive UI */}
-                                                 {shouldUseCompactMode() ? (
-                                                     /* Compact mode for large groups */
-                                                     <div>
-                                                         <button
-                                                             type="button"
-                                                             onClick={() => setEditingItemIndex(idx)}
-                                                             className={`w-full px-4 py-3 rounded-lg border text-left flex items-center justify-between min-h-[44px] ${
-                                                                 item.assignments.length === 0
-                                                                     ? 'border-red-300 bg-red-50 text-red-700'
-                                                                     : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                                             }`}
-                                                         >
-                                                             <span className="text-sm">
-                                                                 {getAssignmentDisplayText(item.assignments)}
-                                                             </span>
-                                                             <svg className="w-5 h-5 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                                                 <path d="M9 5l7 7-7 7"></path>
-                                                             </svg>
-                                                         </button>
-                                                     </div>
-                                                 ) : (
-                                                     /* Inline buttons for small groups */
-                                                     <div className="flex flex-wrap gap-2">
-                                                         {getAllParticipants().map(p => {
-                                                             const isAssigned = item.assignments.some(
-                                                                 a => a.user_id === p.id && a.is_guest === p.isGuest
-                                                             );
-
-                                                             return (
-                                                                 <button
-                                                                     key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}
-                                                                     type="button"
-                                                                     onClick={() => toggleItemAssignment(idx, p)}
-                                                                     className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${
-                                                                         isAssigned
-                                                                             ? 'bg-teal-100 border-teal-500 text-teal-700'
-                                                                             : 'bg-gray-50 border-gray-300 text-gray-500'
-                                                                     }`}
-                                                                 >
-                                                                     {getParticipantName(p)}
-                                                                 </button>
-                                                             );
-                                                         })}
-                                                     </div>
-                                                 )}
-                                             </div>
-                                         ))}
-                                     </div>
-                                 )}
-
-                                 {/* Tax/Tip Section */}
-                                 <div className="mt-3 pt-3 border-t">
-                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                         <span className="text-sm text-gray-600">Tax/Tip (split proportionally)</span>
-                                         <div className="flex items-center">
-                                             <span className="text-sm mr-2">{currency}</span>
-                                             <input
-                                                 type="number"
-                                                 placeholder="0.00"
-                                                 step="0.01"
-                                                 className="w-28 sm:w-24 border rounded p-2 text-sm text-right min-h-[44px]"
-                                                 value={taxTipAmount}
-                                                 onChange={(e) => setTaxTipAmount(e.target.value)}
-                                             />
-                                         </div>
-                                     </div>
-                                 </div>
-
-                                 {/* Running Total */}
-                                 <div className="mt-3 text-right text-base font-semibold">
-                                     Total: {currency} {calculateItemizedTotal()}
-                                 </div>
-                             </div>
-                         )}
-
-                         {splitType !== 'EQUAL' && splitType !== 'ITEMIZED' && (
-                             <div className="bg-gray-50 p-3 rounded space-y-3">
-                                 {getAllParticipants().map(p => {
-                                     const key = p.isGuest ? `guest_${p.id}` : `user_${p.id}`;
-                                     return (
-                                         <div key={key} className="flex items-center justify-between gap-3">
-                                             <span className="text-sm flex-1">
-                                                 {getParticipantName(p)}
-                                                 {p.isGuest && <span className="text-orange-500 ml-1">(guest)</span>}
-                                             </span>
-                                             <div className="flex items-center gap-2">
-                                                 <input
+                                    {/* Tax/Tip Section */}
+                                    <div className="mt-3 pt-3 border-t dark:border-gray-600">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                            <span className="text-sm text-gray-600 dark:text-gray-400">Tax/Tip (split proportionally)</span>
+                                            <div className="flex items-center">
+                                                <span className="text-sm mr-2 dark:text-gray-300">{currency}</span>
+                                                <input
                                                     type="number"
-                                                    className="w-24 border rounded p-2 text-sm text-right min-h-[44px]"
-                                                    placeholder="0"
-                                                    onChange={(e) => handleSplitDetailChange(key, e.target.value)}
-                                                 />
-                                                 <span className="text-sm text-gray-500 w-16">
-                                                     {splitType === 'PERCENT' ? '%' : splitType === 'SHARES' ? 'shares' : currency}
-                                                 </span>
-                                             </div>
-                                         </div>
-                                     );
-                                 })}
-                             </div>
-                         )}
-                    </div>
+                                                    placeholder="0.00"
+                                                    step="0.01"
+                                                    className="w-28 sm:w-24 border dark:border-gray-600 rounded p-2 text-sm text-right min-h-[44px] dark:bg-gray-800 dark:text-gray-100"
+                                                    value={taxTipAmount}
+                                                    onChange={(e) => setTaxTipAmount(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Running Total */}
+                                    <div className="mt-3 text-right text-base font-semibold dark:text-white">
+                                        Total: {currency} {calculateItemizedTotal()}
+                                    </div>
+                                </div>
+                            )}
+
+                            {splitType !== 'EQUAL' && splitType !== 'ITEMIZED' && (
+                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded space-y-3">
+                                    {getAllParticipants().map(p => {
+                                        const key = p.isGuest ? `guest_${p.id}` : `user_${p.id}`;
+                                        return (
+                                            <div key={key} className="flex items-center justify-between gap-3">
+                                                <span className="text-sm flex-1 dark:text-gray-100">
+                                                    {getParticipantName(p)}
+                                                    {p.isGuest && <span className="text-orange-500 dark:text-orange-400 ml-1">(guest)</span>}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 border dark:border-gray-600 rounded p-2 text-sm text-right min-h-[44px] dark:bg-gray-800 dark:text-gray-100"
+                                                        placeholder="0"
+                                                        onChange={(e) => handleSplitDetailChange(key, e.target.value)}
+                                                    />
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400 w-16">
+                                                        {splitType === 'PERCENT' ? '%' : splitType === 'SHARES' ? 'shares' : currency}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 sm:p-5 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded min-h-[44px]">Cancel</button>
+                    <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-5 flex justify-end space-x-3">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded min-h-[44px]">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 min-h-[44px]">Save</button>
                     </div>
                 </form>

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -82,3 +83,14 @@ class ExpenseItemAssignment(Base):
     expense_item_id = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=False)
     is_guest = Column(Boolean, default=False)
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    token_hash = Column(String, unique=True, nullable=False)  # Store hashed token
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    revoked = Column(Boolean, default=False)
+
