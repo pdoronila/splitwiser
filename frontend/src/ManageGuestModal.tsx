@@ -7,17 +7,20 @@ interface GroupMember {
     email: string;
 }
 
+interface GuestMember {
+    id: number;
+    name: string;
+    managed_by_id: number | null;
+    managed_by_name: string | null;
+}
+
 interface ManageGuestModalProps {
     isOpen: boolean;
     onClose: () => void;
-    guest: {
-        id: number;
-        name: string;
-        managed_by_user_id: number | null;
-        managed_by_name: string | null;
-    } | null;
+    guest: GuestMember | null;
     groupId: string;
     groupMembers: GroupMember[];
+    groupGuests: { id: number; name: string; }[];  // Other guests in the group
     onGuestUpdated: () => void;
 }
 
@@ -27,15 +30,18 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
     guest,
     groupId,
     groupMembers,
+    groupGuests,
     onGuestUpdated
 }) => {
     const [selectedManagerId, setSelectedManagerId] = useState<number | null>(null);
+    const [selectedIsGuest, setSelectedIsGuest] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen && guest) {
-            setSelectedManagerId(guest.managed_by_user_id);
+            setSelectedManagerId(guest.managed_by_id);
+            setSelectedIsGuest(false);  // Reset, will be set by dropdown
             setError(null);
         }
     }, [isOpen, guest]);
@@ -61,7 +67,10 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ user_id: selectedManagerId })
+                    body: JSON.stringify({
+                        user_id: selectedManagerId,
+                        is_guest: selectedIsGuest
+                    })
                 }
             );
 
@@ -115,6 +124,22 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
         }
     };
 
+    const handleManagerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (!value) {
+            setSelectedManagerId(null);
+            setSelectedIsGuest(false);
+            return;
+        }
+
+        const [type, id] = value.split('-');
+        setSelectedManagerId(Number(id));
+        setSelectedIsGuest(type === 'guest');
+    };
+
+    // Filter out the current guest from selectable guests
+    const selectableGuests = groupGuests.filter(g => g.id !== guest.id);
+
     return (
         <div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center"
@@ -140,7 +165,7 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                 {/* Content */}
                 <div className="p-5">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Link this guest to a group member to combine their balances for settlement.
+                        Link this guest to a group member or another guest to combine their balances for settlement.
                         The guest will still appear separately in expense details.
                     </p>
 
@@ -159,17 +184,28 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                             Select Manager
                         </label>
                         <select
-                            value={selectedManagerId || ''}
-                            onChange={(e) => setSelectedManagerId(Number(e.target.value) || null)}
+                            value={selectedManagerId && selectedIsGuest !== undefined ? `${selectedIsGuest ? 'guest' : 'user'}-${selectedManagerId}` : ''}
+                            onChange={handleManagerChange}
                             className="w-full px-4 py-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-teal-500 dark:focus:border-teal-400 dark:bg-gray-700 dark:text-gray-100"
                             disabled={isSubmitting}
                         >
-                            <option value="">-- Select a Member --</option>
-                            {groupMembers.map(member => (
-                                <option key={member.user_id} value={member.user_id}>
-                                    {member.full_name}
-                                </option>
-                            ))}
+                            <option value="">-- Select a Manager --</option>
+                            <optgroup label="Users">
+                                {groupMembers.map(member => (
+                                    <option key={`user-${member.user_id}`} value={`user-${member.user_id}`}>
+                                        {member.full_name}
+                                    </option>
+                                ))}
+                            </optgroup>
+                            {selectableGuests.length > 0 && (
+                                <optgroup label="Guests">
+                                    {selectableGuests.map(g => (
+                                        <option key={`guest-${g.id}`} value={`guest-${g.id}`}>
+                                            {g.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
                         </select>
                     </div>
 
@@ -186,10 +222,10 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                             className="w-full px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors min-h-[44px]"
                             disabled={isSubmitting || !selectedManagerId}
                         >
-                            {isSubmitting ? 'Saving...' : guest.managed_by_user_id ? 'Update Manager' : 'Set Manager'}
+                            {isSubmitting ? 'Saving...' : guest.managed_by_id ? 'Update Manager' : 'Set Manager'}
                         </button>
 
-                        {guest.managed_by_user_id && (
+                        {guest.managed_by_id && (
                             <button
                                 onClick={handleRemoveManager}
                                 className="w-full px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors min-h-[44px]"

@@ -22,7 +22,8 @@ export interface GuestMember {
     name: string;
     created_by_id: number;
     claimed_by_id: number | null;
-    managed_by_user_id: number | null;
+    managed_by_id: number | null;
+    managed_by_type: string | null;  // 'user' | 'guest'
     managed_by_name: string | null;
 }
 

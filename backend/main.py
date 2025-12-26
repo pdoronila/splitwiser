@@ -59,6 +59,39 @@ EXCHANGE_RATES = {
     "CAD": 1.38
 }
 
+# Currency symbols for formatting
+CURRENCY_SYMBOLS = {
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "JPY": "¥",
+    "CAD": "CA$"
+}
+
+def format_currency(amount_cents: int, currency: str) -> str:
+    """
+    Format an amount in cents as a currency string with symbol.
+
+    Args:
+        amount_cents: Amount in cents (e.g., 1234 for $12.34)
+        currency: Currency code (e.g., "USD", "EUR")
+
+    Returns:
+        Formatted string with symbol (e.g., "$12.34", "€12.34")
+    """
+    symbol = CURRENCY_SYMBOLS.get(currency, currency)
+    amount = amount_cents / 100
+
+    # For currencies like JPY that don't use decimal places
+    if currency == "JPY":
+        return f"{symbol}{amount:.0f}"
+
+    # Handle negative amounts
+    if amount < 0:
+        return f"-{symbol}{abs(amount):.2f}"
+    else:
+        return f"{symbol}{amount:.2f}"
+
 def fetch_historical_exchange_rate(date: str, from_currency: str, to_currency: str = "USD") -> Optional[float]:
     """
     Fetch historical exchange rate from Frankfurter API (free, no key required).
@@ -423,10 +456,15 @@ def get_group(group_id: int, current_user: Annotated[models.User, Depends(get_cu
     guests_with_manager_names = []
     for g in guests:
         managed_by_name = None
-        if g.managed_by_user_id:
-            manager = db.query(models.User).filter(models.User.id == g.managed_by_user_id).first()
-            if manager:
-                managed_by_name = manager.full_name or manager.email
+        if g.managed_by_id:
+            if g.managed_by_type == 'user':
+                manager = db.query(models.User).filter(models.User.id == g.managed_by_id).first()
+                if manager:
+                    managed_by_name = manager.full_name or manager.email
+            elif g.managed_by_type == 'guest':
+                manager_guest = db.query(models.GuestMember).filter(models.GuestMember.id == g.managed_by_id).first()
+                if manager_guest:
+                    managed_by_name = manager_guest.name
 
         guests_with_manager_names.append(schemas.GuestMember(
             id=g.id,
@@ -434,7 +472,8 @@ def get_group(group_id: int, current_user: Annotated[models.User, Depends(get_cu
             name=g.name,
             created_by_id=g.created_by_id,
             claimed_by_id=g.claimed_by_id,
-            managed_by_user_id=g.managed_by_user_id,
+            managed_by_id=g.managed_by_id,
+            managed_by_type=g.managed_by_type,
             managed_by_name=managed_by_name
         ))
 
@@ -527,8 +566,9 @@ def remove_group_member(group_id: int, user_id: int, current_user: Annotated[mod
     # Auto-unlink any guests managed by this user
     db.query(models.GuestMember).filter(
         models.GuestMember.group_id == group_id,
-        models.GuestMember.managed_by_user_id == user_id
-    ).update({"managed_by_user_id": None})
+        models.GuestMember.managed_by_id == user_id,
+        models.GuestMember.managed_by_type == 'user'
+    ).update({"managed_by_id": None, "managed_by_type": None})
 
     db.delete(member)
     db.commit()
@@ -636,6 +676,7 @@ def claim_guest(group_id: int, guest_id: int, current_user: Annotated[models.Use
 
 class ManageGuestRequest(BaseModel):
     user_id: int
+    is_guest: bool = False  # Set to True if manager is a guest
 
 @app.post("/groups/{group_id}/guests/{guest_id}/manage")
 def manage_guest(
@@ -645,7 +686,7 @@ def manage_guest(
     current_user: Annotated[models.User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
-    """Link a guest to a user manager for aggregated balance tracking"""
+    """Link a guest to a manager (user or guest) for aggregated balance tracking"""
     get_group_or_404(db, group_id)
     verify_group_membership(db, group_id, current_user.id)
 
@@ -661,24 +702,38 @@ def manage_guest(
     # Cannot manage a claimed guest
     if guest.claimed_by_id:
         raise HTTPException(status_code=400, detail="Cannot manage a claimed guest")
+    
+    # Cannot manage yourself
+    if request.is_guest and request.user_id == guest_id:
+        raise HTTPException(status_code=400, detail="Guest cannot manage itself")
 
-    # Verify manager is a group member
-    manager_membership = db.query(models.GroupMember).filter(
-        models.GroupMember.group_id == group_id,
-        models.GroupMember.user_id == request.user_id
-    ).first()
-
-    if not manager_membership:
-        raise HTTPException(status_code=400, detail="Manager must be a group member")
+    # Verify manager exists and is in the group
+    if request.is_guest:
+        # Manager is a guest - verify it exists and is in this group
+        manager_guest = db.query(models.GuestMember).filter(
+            models.GuestMember.id == request.user_id,
+            models.GuestMember.group_id == group_id,
+            models.GuestMember.claimed_by_id == None  # Cannot use claimed guests as managers
+        ).first()
+        if not manager_guest:
+            raise HTTPException(status_code=400, detail="Manager guest not found or already claimed")
+        managed_by_name = manager_guest.name
+    else:
+        # Manager is a user - verify they are a group member
+        manager_membership = db.query(models.GroupMember).filter(
+            models.GroupMember.group_id == group_id,
+            models.GroupMember.user_id == request.user_id
+        ).first()
+        if not manager_membership:
+            raise HTTPException(status_code=400, detail="Manager must be a group member")
+        manager = db.query(models.User).filter(models.User.id == request.user_id).first()
+        managed_by_name = manager.full_name or manager.email if manager else None
 
     # Update guest's manager
-    guest.managed_by_user_id = request.user_id
+    guest.managed_by_id = request.user_id
+    guest.managed_by_type = 'guest' if request.is_guest else 'user'
     db.commit()
     db.refresh(guest)
-
-    # Get manager name for response
-    manager = db.query(models.User).filter(models.User.id == request.user_id).first()
-    managed_by_name = manager.full_name or manager.email if manager else None
 
     return {
         "message": "Guest manager updated successfully",
@@ -688,7 +743,8 @@ def manage_guest(
             name=guest.name,
             created_by_id=guest.created_by_id,
             claimed_by_id=guest.claimed_by_id,
-            managed_by_user_id=guest.managed_by_user_id,
+            managed_by_id=guest.managed_by_id,
+            managed_by_type=guest.managed_by_type,
             managed_by_name=managed_by_name
         )
     }
@@ -713,7 +769,8 @@ def unmanage_guest(
         raise HTTPException(status_code=404, detail="Guest not found")
 
     # Remove manager link
-    guest.managed_by_user_id = None
+    guest.managed_by_id = None
+    guest.managed_by_type = None
     db.commit()
 
     return {"message": "Guest manager removed successfully"}
@@ -762,16 +819,18 @@ def get_group_balances(group_id: int, current_user: Annotated[models.User, Depen
     # Get all managed guests in this group
     managed_guests = db.query(models.GuestMember).filter(
         models.GuestMember.group_id == group_id,
-        models.GuestMember.managed_by_user_id != None
+        models.GuestMember.managed_by_id != None
     ).all()
 
     # Track which guests were aggregated with which managers (for breakdown display)
-    manager_guest_breakdown = {}  # (manager_id, currency) -> [(guest_name, amount)]
+    # Key: (manager_id, is_guest, currency) -> [(guest_name, amount)]
+    manager_guest_breakdown = {}
 
     # Aggregate managed guest balances with their managers
     for guest in managed_guests:
         guest_key = (guest.id, True)  # (id, is_guest)
-        manager_key = (guest.managed_by_user_id, False)
+        manager_is_guest = (guest.managed_by_type == 'guest')
+        manager_key = (guest.managed_by_id, manager_is_guest)
 
         if guest_key in net_balances:
             # Transfer guest's balance to manager
@@ -787,7 +846,7 @@ def get_group_balances(group_id: int, current_user: Annotated[models.User, Depen
                 net_balances[manager_key][currency] += amount
 
                 # Track for breakdown
-                breakdown_key = (guest.managed_by_user_id, currency)
+                breakdown_key = (guest.managed_by_id, manager_is_guest, currency)
                 if breakdown_key not in manager_guest_breakdown:
                     manager_guest_breakdown[breakdown_key] = []
                 manager_guest_breakdown[breakdown_key].append((guest.name, amount))
@@ -809,13 +868,13 @@ def get_group_balances(group_id: int, current_user: Annotated[models.User, Depen
             if amount != 0:
                 # Get managed guests breakdown for this balance
                 managed_guests_list = []
-                if not is_guest:
-                    breakdown_key = (participant_id, currency)
-                    if breakdown_key in manager_guest_breakdown:
-                        managed_guests_list = [
-                            f"{guest_name} ({amount/100:.2f})"
-                            for guest_name, amount in manager_guest_breakdown[breakdown_key]
-                        ]
+                # Check for managed guests breakdown (works for both users and guests as managers)
+                breakdown_key = (participant_id, is_guest, currency)
+                if breakdown_key in manager_guest_breakdown:
+                    managed_guests_list = [
+                        f"{guest_name} ({format_currency(amount, currency)})"
+                        for guest_name, amount in manager_guest_breakdown[breakdown_key]
+                    ]
 
                 result.append(schemas.GroupBalance(
                     user_id=participant_id,

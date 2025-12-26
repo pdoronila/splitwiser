@@ -165,7 +165,8 @@ class GuestMember(BaseModel):
     name: str
     created_by_id: int
     claimed_by_id: Optional[int] = None
-    managed_by_user_id: Optional[int] = None
+    managed_by_id: Optional[int] = None
+    managed_by_type: Optional[str] = None  # 'user' or 'guest'
     managed_by_name: Optional[str] = None
 
     class Config:

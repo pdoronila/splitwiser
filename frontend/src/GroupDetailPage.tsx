@@ -22,7 +22,8 @@ interface GuestMember {
     name: string;
     created_by_id: number;
     claimed_by_id: number | null;
-    managed_by_user_id: number | null;
+    managed_by_id: number | null;
+    managed_by_type: string | null;  // 'user' | 'guest'
     managed_by_name: string | null;
 }
 
@@ -273,13 +274,14 @@ const GroupDetailPage: React.FC = () => {
                 let convertedManagedGuests = balance.managed_guests;
                 if (balance.managed_guests && balance.managed_guests.length > 0 && balance.currency !== group.default_currency) {
                     convertedManagedGuests = balance.managed_guests.map(guestStr => {
-                        // Parse "Guest Name (amount)" format
-                        const match = guestStr.match(/^(.+?)\s*\(([+-]?\d+\.?\d*)\)$/);
+                        // Parse "Guest Name ($12.34)" or "Guest Name (-$12.34)" format
+                        const match = guestStr.match(/^(.+?)\s*\(([+-]?[^\d]*)([\d.]+)\)$/);
                         if (match) {
                             const guestName = match[1];
-                            const amount = parseFloat(match[2]) * 100; // Convert to cents
+                            const sign = match[2].includes('-') ? -1 : 1;
+                            const amount = parseFloat(match[3]) * 100 * sign; // Convert to cents
                             const convertedGuestAmount = convertCurrency(amount, balance.currency, group.default_currency);
-                            return `${guestName} (${(convertedGuestAmount / 100).toFixed(2)})`;
+                            return `${guestName} (${formatMoney(convertedGuestAmount, group.default_currency)})`;
                         }
                         return guestStr; // Return unchanged if parsing fails
                     });
@@ -299,12 +301,29 @@ const GroupDetailPage: React.FC = () => {
                 const key = `${balance.user_id}_${balance.is_guest}`;
                 if (aggregated[key]) {
                     aggregated[key].amount += balance.amount;
-                    // Merge managed_guests arrays
+                    // Merge and consolidate managed_guests arrays
                     if (balance.managed_guests && balance.managed_guests.length > 0) {
-                        aggregated[key].managed_guests = [
-                            ...(aggregated[key].managed_guests || []),
-                            ...balance.managed_guests
-                        ];
+                        const existingGuests = aggregated[key].managed_guests || [];
+                        const allGuests = [...existingGuests, ...balance.managed_guests];
+
+                        // Parse, group by guest name, and sum amounts
+                        const guestMap: Record<string, number> = {};
+                        allGuests.forEach(guestStr => {
+                            // Parse "Guest Name ($12.34)" or "Guest Name (-$12.34)" format
+                            const match = guestStr.match(/^(.+?)\s*\(([+-]?[^\d]*)([\d.]+)\)$/);
+                            if (match) {
+                                const guestName = match[1];
+                                const sign = match[2].includes('-') ? -1 : 1;
+                                const amount = parseFloat(match[3]) * sign;
+                                guestMap[guestName] = (guestMap[guestName] || 0) + amount;
+                            }
+                        });
+
+                        // Re-format consolidated guests with currency symbols
+                        const currency = group.default_currency;
+                        aggregated[key].managed_guests = Object.entries(guestMap).map(
+                            ([name, amount]) => `${name} (${formatMoney(amount * 100, currency)})`
+                        );
                     }
                 } else {
                     aggregated[key] = { ...balance };
@@ -611,9 +630,9 @@ const GroupDetailPage: React.FC = () => {
                                                     setIsManageGuestModalOpen(true);
                                                 }}
                                                 className="text-xs px-2 py-1 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded"
-                                                title={guest.managed_by_user_id ? "Change manager" : "Set manager"}
+                                                title={guest.managed_by_id ? "Change manager" : "Set manager"}
                                             >
-                                                {guest.managed_by_user_id ? 'Change' : 'Manage'}
+                                                {guest.managed_by_id ? 'Change' : 'Manage'}
                                             </button>
                                             {user?.id === group.created_by_id && (
                                                 <button
@@ -707,6 +726,7 @@ const GroupDetailPage: React.FC = () => {
                 guest={selectedGuest}
                 groupId={groupId || ''}
                 groupMembers={group?.members || []}
+                groupGuests={group?.guests || []}
                 onGuestUpdated={() => {
                     fetchGroupData();
                     setIsManageGuestModalOpen(false);
