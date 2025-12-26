@@ -38,7 +38,6 @@ const SplitDetailsInput: React.FC<SplitDetailsInputProps> = ({
                     <div key={key} className="flex items-center justify-between gap-3">
                         <span className="text-sm flex-1 dark:text-gray-100">
                             {getParticipantName(p)}
-                            {p.isGuest && <span className="text-orange-500 dark:text-orange-400 ml-1">(guest)</span>}
                         </span>
                         <div className="flex items-center gap-2">
                             <input

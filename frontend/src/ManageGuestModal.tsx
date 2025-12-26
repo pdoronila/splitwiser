@@ -191,7 +191,7 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                         >
                             <option value="">-- Select a Manager --</option>
                             <optgroup label="Users">
-                                {groupMembers.map(member => (
+                                {[...groupMembers].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(member => (
                                     <option key={`user-${member.user_id}`} value={`user-${member.user_id}`}>
                                         {member.full_name}
                                     </option>
@@ -199,7 +199,7 @@ const ManageGuestModal: React.FC<ManageGuestModalProps> = ({
                             </optgroup>
                             {selectableGuests.length > 0 && (
                                 <optgroup label="Guests">
-                                    {selectableGuests.map(g => (
+                                    {[...selectableGuests].sort((a, b) => a.name.localeCompare(b.name)).map(g => (
                                         <option key={`guest-${g.id}`} value={`guest-${g.id}`}>
                                             {g.name}
                                         </option>

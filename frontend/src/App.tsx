@@ -156,7 +156,7 @@ const Dashboard = () => {
               </button>
             </div>
             <ul className="space-y-1">
-              {groups.map(group => (
+              {[...groups].sort((a, b) => a.name.localeCompare(b.name)).map(group => (
                 <li
                   key={group.id}
                   className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-gray-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 border border-gray-200 dark:border-gray-700 hover:border-teal-400 dark:hover:border-teal-600 px-3 py-2.5 cursor-pointer rounded-lg transition-all duration-150 font-medium shadow-sm hover:shadow-md"
@@ -185,7 +185,7 @@ const Dashboard = () => {
               </button>
             </div>
             <ul className="space-y-1">
-              {friends.map(friend => (
+              {[...friends].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(friend => (
                 <li key={friend.id} className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 px-2 py-1 cursor-pointer">
                   {friend.full_name}
                 </li>

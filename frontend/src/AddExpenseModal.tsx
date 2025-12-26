@@ -267,12 +267,26 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const getAvailableParticipants = (): Participant[] => {
         const participants: Participant[] = [];
         participants.push({ id: user!.id, name: 'You', isGuest: false });
-        friends.forEach(f => {
-            participants.push({ id: f.id, name: f.full_name, isGuest: false });
-        });
-        groupGuests.forEach(g => {
-            participants.push({ id: g.id, name: g.name, isGuest: true });
-        });
+
+        // If a group is selected, only show group members and guests
+        if (selectedGroup) {
+            // Add group members (excluding current user)
+            selectedGroup.members?.forEach(m => {
+                if (m.user_id !== user!.id) {
+                    participants.push({ id: m.user_id, name: m.full_name, isGuest: false });
+                }
+            });
+            // Add group guests
+            groupGuests.forEach(g => {
+                participants.push({ id: g.id, name: g.name, isGuest: true });
+            });
+        } else {
+            // If no group selected, show all friends
+            friends.forEach(f => {
+                participants.push({ id: f.id, name: f.full_name, isGuest: false });
+            });
+        }
+
         return participants;
     };
 
@@ -330,19 +344,28 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const getPotentialPayers = (): Participant[] => {
         const payers: Participant[] = [];
         payers.push({ id: user!.id, name: 'You', isGuest: false });
+
+        const friendPayers: Participant[] = [];
         selectedFriendIds.forEach(fid => {
             const friend = friends.find(f => f.id === fid);
             if (friend) {
-                payers.push({ id: friend.id, name: friend.full_name, isGuest: false });
+                friendPayers.push({ id: friend.id, name: friend.full_name, isGuest: false });
             }
         });
+
+        const guestPayers: Participant[] = [];
         selectedGuestIds.forEach(gid => {
             const guest = groupGuests.find(g => g.id === gid);
             if (guest) {
-                payers.push({ id: guest.id, name: guest.name, isGuest: true });
+                guestPayers.push({ id: guest.id, name: guest.name, isGuest: true });
             }
         });
-        return payers;
+
+        // Sort friends and guests alphabetically, then add them
+        friendPayers.sort((a, b) => a.name.localeCompare(b.name));
+        guestPayers.sort((a, b) => a.name.localeCompare(b.name));
+
+        return [...payers, ...friendPayers, ...guestPayers];
     };
 
     return (
@@ -418,9 +441,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                         <div className="mb-4">
                             <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">With you and:</label>
-                            {friends.length === 0 && groupGuests.length === 0 ? (
+                            {getAvailableParticipants().length === 1 ? (
                                 <div className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
-                                    Add friends or select a group with members to split expenses
+                                    {selectedGroup ? 'No other members in this group' : 'Add friends or select a group with members to split expenses'}
                                 </div>
                             ) : getAvailableParticipants().length > 6 ? (
                                 <button
@@ -435,26 +458,35 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                 </button>
                             ) : (
                                 <div className="flex flex-wrap gap-2">
-                                    {friends.map(friend => (
-                                        <button
-                                            key={friend.id}
-                                            type="button"
-                                            onClick={() => toggleFriend(friend.id)}
-                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedFriendIds.includes(friend.id) ? 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'}`}
-                                        >
-                                            {friend.full_name}
-                                        </button>
-                                    ))}
-                                    {groupGuests.map(guest => (
-                                        <button
-                                            key={`guest-${guest.id}`}
-                                            type="button"
-                                            onClick={() => toggleGuest(guest.id)}
-                                            className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedGuestIds.includes(guest.id) ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-500 dark:border-orange-600 text-orange-700 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'}`}
-                                        >
-                                            {guest.name} <span className="text-gray-400 dark:text-gray-500">(guest)</span>
-                                        </button>
-                                    ))}
+                                    {getAvailableParticipants()
+                                        .filter(p => p.name !== 'You')
+                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .map(participant => {
+                                            const key = participant.isGuest ? `guest-${participant.id}` : `friend-${participant.id}`;
+                                            const isSelected = participant.isGuest
+                                                ? selectedGuestIds.includes(participant.id)
+                                                : selectedFriendIds.includes(participant.id);
+                                            const toggleFn = participant.isGuest
+                                                ? () => toggleGuest(participant.id)
+                                                : () => toggleFriend(participant.id);
+
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    onClick={toggleFn}
+                                                    className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${
+                                                        isSelected
+                                                            ? participant.isGuest
+                                                                ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-500 dark:border-orange-600 text-orange-700 dark:text-orange-300'
+                                                                : 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
+                                                            : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'
+                                                    }`}
+                                                >
+                                                    {participant.name}
+                                                </button>
+                                            );
+                                        })}
                                 </div>
                             )}
                         </div>
@@ -473,7 +505,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                 >
                                     {getPotentialPayers().map(p => (
                                         <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
-                                            {p.name}{p.isGuest ? ' (guest)' : ''}
+                                            {p.name}
                                         </option>
                                     ))}
                                 </select>

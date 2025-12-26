@@ -31,10 +31,12 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onMemb
     if (!isOpen) return null;
 
     // Filter friends based on search query
-    const filteredFriends = friends.filter(friend =>
-        friend.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        friend.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredFriends = friends
+        .filter(friend =>
+            friend.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            friend.email.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
     const handleAddMember = async (memberEmail: string) => {
         setIsSubmitting(true);

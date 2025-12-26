@@ -89,6 +89,7 @@ const GroupDetailPage: React.FC = () => {
     const [showInGroupCurrency, setShowInGroupCurrency] = useState(true);
     const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1 });
     const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+    const [isBalancesExpanded, setIsBalancesExpanded] = useState(true);
 
     // Set dynamic page title with group name
     usePageTitle(group?.name || 'Loading...');
@@ -360,13 +361,21 @@ const GroupDetailPage: React.FC = () => {
 
         return (
             <div className="space-y-4">
-                {Object.entries(byCurrency).map(([currency, balanceList]) => (
+                {Object.entries(byCurrency).map(([currency, balanceList]) => {
+                    // Sort: "You" first, then alphabetically
+                    const sortedList = [...balanceList].sort((a, b) => {
+                        if (a.full_name === 'You') return -1;
+                        if (b.full_name === 'You') return 1;
+                        return a.full_name.localeCompare(b.full_name);
+                    });
+
+                    return (
                     <div key={currency}>
                         <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase">
                             {currency}
                         </h3>
                         <ul className="space-y-2">
-                            {balanceList.map((balance, idx) => (
+                            {sortedList.map((balance, idx) => (
                                 <li key={`${balance.user_id}_${balance.is_guest}_${idx}`}
                                     className="flex items-center justify-between py-2">
                                     <div className="flex flex-col">
@@ -387,7 +396,8 @@ const GroupDetailPage: React.FC = () => {
                             ))}
                         </ul>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         );
     };
@@ -395,9 +405,16 @@ const GroupDetailPage: React.FC = () => {
     const renderBalancesConverted = () => {
         const processedBalances = getProcessedBalances();
 
+        // Sort: "You" first, then alphabetically
+        const sortedBalances = [...processedBalances].sort((a, b) => {
+            if (a.full_name === 'You') return -1;
+            if (b.full_name === 'You') return 1;
+            return a.full_name.localeCompare(b.full_name);
+        });
+
         return (
             <ul className="space-y-2">
-                {processedBalances.map((balance, index) => (
+                {sortedBalances.map((balance, index) => (
                     <li key={index} className="flex items-center justify-between py-2">
                         <div className="flex flex-col">
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -481,32 +498,6 @@ const GroupDetailPage: React.FC = () => {
             </header>
 
             <main className="max-w-5xl mx-auto px-4 lg:px-6 py-4 lg:py-6">
-                {/* Balances Section - Priority #1 */}
-                <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 p-4 lg:p-6 mb-4">
-                    <div className="flex justify-between items-center mb-3 lg:mb-4 gap-2">
-                        <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">Group Balances</h2>
-                        {group?.default_currency && balances.length > 0 && (
-                            <button
-                                onClick={() => setShowInGroupCurrency(!showInGroupCurrency)}
-                                className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
-                            >
-                                {showInGroupCurrency
-                                    ? `By currency`
-                                    : `In ${group.default_currency}`}
-                            </button>
-                        )}
-                    </div>
-
-                    {balances.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400 italic text-sm">No balances yet</p>
-                    ) : (
-                        <div>
-                            {!showInGroupCurrency && renderBalancesByCurrency()}
-                            {showInGroupCurrency && renderBalancesConverted()}
-                        </div>
-                    )}
-                </div>
-
                 {/* Quick Action - Add Expense */}
                 <div className="mb-4">
                     <button
@@ -517,7 +508,7 @@ const GroupDetailPage: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Expenses Section - Priority #2 */}
+                {/* Expenses Section - Priority #1 */}
                 <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 p-4 lg:p-6 mb-4">
                     <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 lg:mb-4">
                         Recent Expenses
@@ -562,6 +553,58 @@ const GroupDetailPage: React.FC = () => {
                     )}
                 </div>
 
+                {/* Balances Section - Collapsible */}
+                <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50 mb-4">
+                    <button
+                        onClick={() => setIsBalancesExpanded(!isBalancesExpanded)}
+                        className="w-full p-4 lg:p-6 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                        <div>
+                            <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">
+                                Group Balances
+                            </h2>
+                            {isBalancesExpanded && group?.default_currency && balances.length > 0 && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {showInGroupCurrency
+                                        ? `Displaying in ${group.default_currency}`
+                                        : `Grouped by currency`}
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {isBalancesExpanded && group?.default_currency && balances.length > 0 && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowInGroupCurrency(!showInGroupCurrency);
+                                    }}
+                                    className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
+                                >
+                                    {showInGroupCurrency
+                                        ? `By currency`
+                                        : `In ${group.default_currency}`}
+                                </button>
+                            )}
+                            <span className="text-gray-400 dark:text-gray-500 text-xl">
+                                {isBalancesExpanded ? '−' : '+'}
+                            </span>
+                        </div>
+                    </button>
+
+                    {isBalancesExpanded && (
+                        <div className="px-4 lg:px-6 pb-4 lg:pb-6 border-t dark:border-gray-700">
+                            {balances.length === 0 ? (
+                                <p className="text-gray-500 dark:text-gray-400 italic text-sm mt-4">No balances yet</p>
+                            ) : (
+                                <div className="mt-4">
+                                    {!showInGroupCurrency && renderBalancesByCurrency()}
+                                    {showInGroupCurrency && renderBalancesConverted()}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Members Section - Collapsible */}
                 <div className="bg-white dark:bg-gray-800 rounded shadow-sm dark:shadow-gray-900/50">
                     <button
@@ -579,7 +622,7 @@ const GroupDetailPage: React.FC = () => {
                     {isMembersExpanded && (
                         <div className="px-4 lg:px-6 pb-4 lg:pb-6 border-t dark:border-gray-700">
                             <ul className="space-y-2 lg:space-y-3 mb-4 mt-4">
-                                {group.members.map(member => (
+                                {[...group.members].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(member => (
                                     <li key={member.id} className="flex items-center justify-between">
                                         <div>
                                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -605,7 +648,7 @@ const GroupDetailPage: React.FC = () => {
                                 ))}
                             </ul>
                             <ul className="space-y-2">
-                                {group.guests?.map(guest => (
+                                {group.guests?.sort((a, b) => a.name.localeCompare(b.name)).map(guest => (
                                     <li key={guest.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded">
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-2">

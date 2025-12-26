@@ -62,9 +62,15 @@ const ParticipantSelector: React.FC<ParticipantSelectorProps> = ({
         onClose();
     };
 
-    const filteredParticipants = participants.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredParticipants = participants
+        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .sort((a, b) => {
+            // "You" always first
+            if (a.name === 'You') return -1;
+            if (b.name === 'You') return 1;
+            // Then alphabetically
+            return a.name.localeCompare(b.name);
+        });
 
     if (!isOpen) return null;
 
@@ -139,7 +145,6 @@ const ParticipantSelector: React.FC<ParticipantSelectorProps> = ({
                                     </div>
                                     <span className="text-sm font-medium truncate">
                                         {p.name}
-                                        {p.isGuest && <span className="text-xs opacity-60 ml-1">(guest)</span>}
                                     </span>
                                 </button>
                             );

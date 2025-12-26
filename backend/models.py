@@ -57,6 +57,7 @@ class Expense(Base):
     group_id = Column(Integer, nullable=True)
     created_by_id = Column(Integer)
     exchange_rate = Column(String, nullable=True) # Rate from currency to USD on expense date (stored as float)
+    split_type = Column(String, default="EQUAL") # EQUAL, EXACT, PERCENT, SHARES, ITEMIZED
 
 class ExpenseSplit(Base):
     __tablename__ = "expense_splits"

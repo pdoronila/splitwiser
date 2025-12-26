@@ -977,7 +977,8 @@ def create_expense(expense: schemas.ExpenseCreate, current_user: Annotated[model
         payer_is_guest=expense.payer_is_guest,
         group_id=expense.group_id,
         created_by_id=current_user.id,
-        exchange_rate=str(exchange_rate)  # Store as string for SQLite compatibility
+        exchange_rate=str(exchange_rate),  # Store as string for SQLite compatibility
+        split_type=expense.split_type or "EQUAL"
     )
     db.add(db_expense)
     db.commit()
@@ -1077,14 +1078,16 @@ def get_expense(expense_id: int, current_user: Annotated[models.User, Depends(ge
             user_name=user_name
         ))
 
-    # Check for ITEMIZED type by looking for expense_items
-    expense_items = db.query(models.ExpenseItem).filter(
-        models.ExpenseItem.expense_id == expense_id
-    ).all()
+    # Use the stored split_type from the expense
+    split_type = expense.split_type or "EQUAL"
 
+    # Load items for ITEMIZED expenses
     items_data = []
-    if expense_items:
-        split_type = "ITEMIZED"
+    if split_type == "ITEMIZED":
+        expense_items = db.query(models.ExpenseItem).filter(
+            models.ExpenseItem.expense_id == expense_id
+        ).all()
+
         for item in expense_items:
             assignments = db.query(models.ExpenseItemAssignment).filter(
                 models.ExpenseItemAssignment.expense_item_id == item.id
@@ -1117,18 +1120,6 @@ def get_expense(expense_id: int, current_user: Annotated[models.User, Depends(ge
                 is_tax_tip=item.is_tax_tip,
                 assignments=assignment_details
             ))
-    else:
-        # Determine split type from splits (check if percentage/shares set)
-        split_type = "EQUAL"
-        if splits and splits[0].percentage is not None:
-            split_type = "PERCENT"
-        elif splits and splits[0].shares is not None:
-            split_type = "SHARES"
-        elif splits:
-            # Check if amounts are equal (within 1 cent tolerance)
-            amounts = [s.amount_owed for s in splits]
-            if len(amounts) > 1 and max(amounts) - min(amounts) > 1:
-                split_type = "EXACT"
 
     return schemas.ExpenseWithSplits(
         id=expense.id,
@@ -1192,6 +1183,7 @@ def update_expense(expense_id: int, expense_update: schemas.ExpenseUpdate, curre
     expense.date = expense_update.date
     expense.payer_id = expense_update.payer_id
     expense.payer_is_guest = expense_update.payer_is_guest
+    expense.split_type = expense_update.split_type or "EQUAL"
 
     # Delete old items and assignments first
     old_items = db.query(models.ExpenseItem).filter(

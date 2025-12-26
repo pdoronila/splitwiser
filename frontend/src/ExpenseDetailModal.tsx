@@ -110,18 +110,22 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         setSelectedParticipantKeys(keys);
 
         // Set split details for non-EQUAL types
-        const details: { [key: string]: number } = {};
-        exp.splits.forEach(s => {
-            const key = s.is_guest ? `guest_${s.user_id}` : `user_${s.user_id}`;
-            if (exp.split_type === 'PERCENT' && s.percentage !== null) {
-                details[key] = s.percentage;
-            } else if (exp.split_type === 'SHARES' && s.shares !== null) {
-                details[key] = s.shares;
-            } else if (exp.split_type === 'EXACT') {
-                details[key] = s.amount_owed / 100;
-            }
-        });
-        setSplitDetails(details);
+        if (exp.split_type !== 'EQUAL' && exp.split_type !== 'ITEMIZED') {
+            const details: { [key: string]: number } = {};
+            exp.splits.forEach(s => {
+                const key = s.is_guest ? `guest_${s.user_id}` : `user_${s.user_id}`;
+                if (exp.split_type === 'PERCENT' && s.percentage !== null) {
+                    details[key] = s.percentage;
+                } else if (exp.split_type === 'SHARES' && s.shares !== null) {
+                    details[key] = s.shares;
+                } else if (exp.split_type === 'EXACT') {
+                    details[key] = s.amount_owed / 100;
+                }
+            });
+            setSplitDetails(details);
+        } else {
+            setSplitDetails({});
+        }
 
         // Handle ITEMIZED expenses
         if (exp.split_type === 'ITEMIZED' && exp.items) {
@@ -223,7 +227,12 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             });
         });
 
-        return participants;
+        // Sort: "You" first, then alphabetically
+        return participants.sort((a, b) => {
+            if (a.name === 'You') return -1;
+            if (b.name === 'You') return 1;
+            return a.name.localeCompare(b.name);
+        });
     };
 
     const handleMainParticipantSelectorConfirm = (selectedParticipants: Participant[]) => {
@@ -550,7 +559,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                                             onClick={() => toggleParticipant(key)}
                                                             className={`px-4 py-2 rounded-full text-sm border min-h-[44px] ${selectedParticipantKeys.includes(key) ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-500 dark:border-orange-600 text-orange-700 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 dark:text-gray-200'}`}
                                                         >
-                                                            {guest.name} <span className="text-gray-400 dark:text-gray-500">(guest)</span>
+                                                            {guest.name}
                                                         </button>
                                                     );
                                                 })}
@@ -572,7 +581,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                             >
                                                 {getPotentialPayers().map(p => (
                                                     <option key={p.isGuest ? `guest_${p.id}` : `user_${p.id}`} value={p.isGuest ? `guest_${p.id}` : `user_${p.id}`}>
-                                                        {p.name}{p.isGuest ? ' (guest)' : ''}
+                                                        {p.name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -719,11 +728,16 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                     <div className="border-t dark:border-gray-700 pt-4">
                                         <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Split Breakdown</h4>
                                         <div className="space-y-2">
-                                            {expense.splits.map(split => (
+                                            {[...expense.splits].sort((a, b) => {
+                                                const aName = a.user_id === currentUserId && !a.is_guest ? 'You' : a.user_name;
+                                                const bName = b.user_id === currentUserId && !b.is_guest ? 'You' : b.user_name;
+                                                if (aName === 'You') return -1;
+                                                if (bName === 'You') return 1;
+                                                return aName.localeCompare(bName);
+                                            }).map(split => (
                                                 <div key={split.id} className="flex justify-between items-center text-sm">
                                                     <span className="text-gray-700 dark:text-gray-300">
                                                         {split.user_id === currentUserId && !split.is_guest ? 'You' : split.user_name}
-                                                        {split.is_guest && <span className="text-orange-500 dark:text-orange-400 ml-1">(guest)</span>}
                                                     </span>
                                                     <span className="text-gray-900 dark:text-gray-100 font-medium">
                                                         {formatMoney(split.amount_owed, expense.currency)}
