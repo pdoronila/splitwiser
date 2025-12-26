@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePageTitle } from './hooks/usePageTitle';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // Set dynamic page title
+  usePageTitle('Login');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

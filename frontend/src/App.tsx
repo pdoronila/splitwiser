@@ -14,6 +14,7 @@ import type { Group } from './types/group';
 import type { Balance } from './types/balance';
 import { formatMoney } from './utils/formatters';
 import { friendsApi, groupsApi, balancesApi } from './services/api';
+import { usePageTitle } from './hooks/usePageTitle';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -27,6 +28,9 @@ const Dashboard = () => {
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Set dynamic page title
+  usePageTitle('Dashboard');
 
   useEffect(() => {
     fetchFriends();

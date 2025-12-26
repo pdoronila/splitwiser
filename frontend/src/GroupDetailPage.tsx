@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { usePageTitle } from './hooks/usePageTitle';
 import EditGroupModal from './EditGroupModal';
 import DeleteGroupConfirm from './DeleteGroupConfirm';
 import AddExpenseModal from './AddExpenseModal';
@@ -88,6 +89,9 @@ const GroupDetailPage: React.FC = () => {
     const [showInGroupCurrency, setShowInGroupCurrency] = useState(true);
     const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1 });
     const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+
+    // Set dynamic page title with group name
+    usePageTitle(group?.name || 'Loading...');
 
     const fetchGroupData = async () => {
         const token = localStorage.getItem('token');
