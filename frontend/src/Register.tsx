@@ -34,11 +34,11 @@ const Register = () => {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Registration failed');
+      }
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('refreshToken', data.refresh_token);
 
@@ -48,7 +48,7 @@ const Register = () => {
         window.location.href = '/';
       }
     } catch (err) {
-      setError('Registration failed. Email might be taken.');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     }
   };
 
