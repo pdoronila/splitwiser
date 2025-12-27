@@ -85,7 +85,7 @@ jobs:
           # Create deployment directory if it doesn't exist
           ssh -i ~/.ssh/synology_key -p ${SYNOLOGY_PORT} -o StrictHostKeyChecking=accept-new ${SYNOLOGY_USER}@${SYNOLOGY_IP} "mkdir -p ${DEPLOY_PATH}/secrets"
 
-          # Copy application files
+          # Copy application files (exclude secrets, we'll copy separately)
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/synology_key -p ${SYNOLOGY_PORT} -o StrictHostKeyChecking=accept-new" \
             --exclude 'node_modules' \
@@ -95,7 +95,13 @@ jobs:
             --exclude 'backend/__pycache__' \
             --exclude 'backend/db.sqlite3' \
             --exclude '.env' \
+            --exclude 'secrets' \
             ./ ${SYNOLOGY_USER}@${SYNOLOGY_IP}:${DEPLOY_PATH}/
+
+          # Copy secrets directory separately (created in previous step)
+          rsync -avz \
+            -e "ssh -i ~/.ssh/synology_key -p ${SYNOLOGY_PORT} -o StrictHostKeyChecking=accept-new" \
+            secrets/ ${SYNOLOGY_USER}@${SYNOLOGY_IP}:${DEPLOY_PATH}/secrets/
 
       - name: Deploy with Docker Compose
         env:
