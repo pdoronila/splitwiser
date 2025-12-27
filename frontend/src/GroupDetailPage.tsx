@@ -632,7 +632,7 @@ const GroupDetailPage: React.FC = () => {
                                 </p>
                             )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
                             {isBalancesExpanded && group?.default_currency && balances.length > 0 && (
                                 <button
                                     onClick={() => setShowInGroupCurrency(!showInGroupCurrency)}
