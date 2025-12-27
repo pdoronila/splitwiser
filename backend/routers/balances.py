@@ -67,7 +67,13 @@ def get_group_balances(
 
     # Aggregate managed guest balances with their managers
     for guest in managed_guests:
-        guest_key = (guest.id, True)
+        if guest.claimed_by_id:
+            # If guest is claimed, their balance is now under the user ID
+            guest_key = (guest.claimed_by_id, False)
+        else:
+            # If guest is unclaimed, their balance is under the guest ID
+            guest_key = (guest.id, True)
+            
         manager_is_guest = (guest.managed_by_type == 'guest')
         manager_key = (guest.managed_by_id, manager_is_guest)
 

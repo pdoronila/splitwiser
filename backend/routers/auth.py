@@ -113,12 +113,10 @@ def register_user(
                     mg.managed_by_type = 'user'
                     db.add(mg)
 
-                # Finally, we can delete the guest record since all references are moved.
-                # But 'claimed_by_id' suggests soft delete or linking. 
-                # Given I migrated all data, I should probably delete it to avoid duplicate "Member" and "Guest" appearing in list if I didn't migrate properly.
-                # However, existing logic might rely on it. 
-                # Let's Delete it to be clean, as the user is now a full member.
-                db.delete(guest)
+                # Finally, we keep the guest record to maintain the "managed by" link if it exists.
+                # The guest is now claimed by the new user.
+                guest.claimed_by_id = db_user.id
+                db.add(guest)
                 
                 db.commit()
                 print(f"Successfully claimed guest {user.claim_guest_id} for user {db_user.id}")
