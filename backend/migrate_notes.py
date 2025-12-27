@@ -3,7 +3,7 @@ import os
 
 # Database path (default to ./db.sqlite3 for local dev, or use env var)
 # In production, this should point to the correct DB file or connection string
-DB_PATH = os.getenv("DATABASE_URL", "db.sqlite3")
+DB_PATH = os.getenv("DATABASE_PATH", "db.sqlite3")
 
 def migrate():
     # Handle sqlite:// prefix if present (SQLAlchemy format)
