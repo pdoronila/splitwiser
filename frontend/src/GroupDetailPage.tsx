@@ -309,6 +309,30 @@ const GroupDetailPage: React.FC = () => {
         setIsExpenseDetailOpen(false);
     };
 
+    const handleJoinGroup = async () => {
+        if (!shareLinkId) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(getApiUrl(`groups/public/${shareLinkId}/join`), {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                // Redirect to the authenticated group view
+                navigate(`/groups/${result.group_id}`, { replace: true });
+            } else {
+                const error = await response.json();
+                alert(error.detail || 'Failed to join group');
+            }
+        } catch (err) {
+            console.error('Error joining group:', err);
+            alert('Failed to join group');
+        }
+    };
+
     const formatMoney = (amount: number, currency: string) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount / 100);
     };
@@ -564,9 +588,14 @@ const GroupDetailPage: React.FC = () => {
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
             {/* Header */}
             <header className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50">
-                {isPublicView && (
+                {isPublicView && !user && (
                     <div className="bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 text-center border-b border-blue-100 dark:border-blue-800">
                         You are viewing this group as a guest. To join, find your name in the <strong>Members</strong> list below and click <strong>Claim</strong>.
+                    </div>
+                )}
+                {isPublicView && user && (
+                    <div className="bg-teal-50 dark:bg-teal-900/30 px-4 py-2 text-sm text-teal-700 dark:text-teal-300 text-center border-b border-teal-100 dark:border-teal-800">
+                        You are viewing this public group. Click the <strong>Join Group</strong> button below to get full access.
                     </div>
                 )}
                 <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4">
@@ -622,6 +651,17 @@ const GroupDetailPage: React.FC = () => {
                             className="w-full px-4 py-3 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 shadow-sm active:bg-orange-700"
                         >
                             Add Expense
+                        </button>
+                    </div>
+                )}
+                {/* Quick Action - Join Group (for logged-in users viewing public link) */}
+                {isPublicView && user && (
+                    <div className="mb-4">
+                        <button
+                            onClick={handleJoinGroup}
+                            className="w-full px-4 py-3 bg-teal-500 text-white text-sm font-medium rounded-lg hover:bg-teal-600 shadow-sm active:bg-teal-700"
+                        >
+                            Join Group
                         </button>
                     </div>
                 )}
