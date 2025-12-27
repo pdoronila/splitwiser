@@ -101,18 +101,17 @@ def register_user(
                 })
 
                 # - Delete the guest member record? Or keep it as claimed?
-                # The model has 'claimed_by_id', implying we keep it. 
-                # But if we migrated all data, the guest record is just a shell now.
-                # However, there might be 'managed_by' references to it?
                 # If this guest was managing others, we should update those managed guests to be managed by the new user.
                 
-                db.query(models.GuestMember).filter(
+                managed_guests = db.query(models.GuestMember).filter(
                     models.GuestMember.managed_by_id == guest.id,
                     models.GuestMember.managed_by_type == 'guest'
-                ).update({
-                    "managed_by_id": db_user.id,
-                    "managed_by_type": 'user'
-                })
+                ).all()
+                
+                for mg in managed_guests:
+                    mg.managed_by_id = db_user.id
+                    mg.managed_by_type = 'user'
+                    db.add(mg)
 
                 # Finally, we can delete the guest record since all references are moved.
                 # But 'claimed_by_id' suggests soft delete or linking. 

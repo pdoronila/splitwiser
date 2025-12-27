@@ -105,9 +105,9 @@ const GroupDetailPage: React.FC = () => {
 
     const [showInGroupCurrency, setShowInGroupCurrency] = useState(true);
     const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1 });
-    const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+    const [isMembersExpanded, setIsMembersExpanded] = useState(!!shareLinkId);
     const [isBalancesExpanded, setIsBalancesExpanded] = useState(true);
-    const [isExpensesExpanded, setIsExpensesExpanded] = useState(false);
+    const [isExpensesExpanded, setIsExpensesExpanded] = useState(!!shareLinkId);
     const [showOnlyMyExpenses, setShowOnlyMyExpenses] = useState(false);
 
     // Set dynamic page title with group name
@@ -620,7 +620,7 @@ const GroupDetailPage: React.FC = () => {
                         <h2 className="text-base lg:text-lg font-medium text-gray-900 dark:text-gray-100">
                             Recent Expenses
                         </h2>
-                        {expenses.length > 0 && (
+                        {expenses.length > 0 && !isPublicView && (
                             <button
                                 onClick={() => setShowOnlyMyExpenses(!showOnlyMyExpenses)}
                                 className="text-xs px-2 lg:px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-600 whitespace-nowrap"
