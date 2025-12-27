@@ -4,6 +4,7 @@ from database import SessionLocal, engine
 import models
 import sys
 
+def cleanup_orphaned_guests():
     db = SessionLocal()
     from database import SQLALCHEMY_DATABASE_URL
     print(f"Using database: {SQLALCHEMY_DATABASE_URL}")
@@ -19,6 +20,9 @@ import sys
         orphaned_count = 0
         for guest in guests_managed_by_guests:
             manager = db.query(models.GuestMember).filter(models.GuestMember.id == guest.managed_by_id).first()
+            if not manager:
+                print(f"Found orphaned guest: {guest.name} (ID: {guest.id}) managed by non-existent Guest ID: {guest.managed_by_id}")
+                
                 # Check for name collision in the same group
                 existing_same_name = db.query(models.GuestMember).filter(
                     models.GuestMember.group_id == guest.group_id,
