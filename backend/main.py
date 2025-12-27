@@ -1244,6 +1244,11 @@ def update_expense(expense_id: int, expense_update: schemas.ExpenseUpdate, curre
     )
 
     # Update expense fields
+    # Check if date or currency changed, if so update exchange rate
+    if expense.date != expense_update.date or expense.currency != expense_update.currency:
+        new_rate = get_exchange_rate_for_expense(expense_update.date, expense_update.currency)
+        expense.exchange_rate = str(new_rate)
+
     expense.description = expense_update.description
     expense.amount = expense_update.amount
     expense.currency = expense_update.currency
@@ -1524,7 +1529,42 @@ def simplify_debts(group_id: int, current_user: Annotated[models.User, Depends(g
         splits = db.query(models.ExpenseSplit).filter(models.ExpenseSplit.expense_id == expense.id).all()
 
         for split in splits:
-            amount_usd = convert_to_usd(split.amount_owed, expense.currency)
+            # Use stored exchange rate from expense if available
+            if expense.exchange_rate:
+                try:
+                    rate = float(expense.exchange_rate)
+                    # Exchange rate is stored as "Currency to USD" (e.g. 1 EUR = 1.09 USD)
+                    # But convert_to_usd function logic was: amount / RATE? 
+                    # Let's check convert_to_usd implementation again.
+                    # It was: amount / EXCHANGE_RATES[currency]
+                    # EXCHANGE_RATES has "EUR": 0.92. This means 1 USD = 0.92 EUR.
+                    # So amount (EUR) / 0.92 = amount (USD). Correct.
+                    
+                    # fetch_historical_exchange_rate returns "from_currency" to "USD". 
+                    # i.e. 1 EUR = 1.05 USD.
+                    # So conversion should be amount * rate.
+                    
+                    # WAIT. Discrepancy detected.
+                    # EXCHANGE_RATES = {"EUR": 0.92} -> This implies 1 USD = 0.92 EUR (since 1/0.92 = 1.08 USD).
+                    # fetch_historical_exchange_rate(from="EUR", to="USD") returns e.g. 1.08.
+                    # So if we have rate 1.08 (EUR->USD), we should MULTIPLY.
+                    # if we have rate 0.92 (USD->EUR), we should DIVIDE.
+                    
+                    # The get_exchange_rate_for_expense(currency, "USD") returns "from currency to USD".
+                    # So it returns ~1.08 for EUR.
+                    # So we should MULTIPLY amount by this rate to get USD.
+                    
+                    # existing convert_to_usd implementation:
+                    # return amount / EXCHANGE_RATES[currency]
+                    # This assumes EXCHANGE_RATES stores USD->Currency.
+                    
+                    # So if I use the stored rate (EUR->USD), I must MULTIPLY.
+                    amount_usd = split.amount_owed * rate
+                except ValueError:
+                     # Fallback if invalid float
+                     amount_usd = convert_to_usd(split.amount_owed, expense.currency)
+            else:
+                amount_usd = convert_to_usd(split.amount_owed, expense.currency)
 
             # Debtor decreases balance
             debtor_key = (split.user_id, split.is_guest)
