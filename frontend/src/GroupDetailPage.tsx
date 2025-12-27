@@ -187,6 +187,18 @@ const GroupDetailPage: React.FC = () => {
         }
     }, [groupId, shareLinkId]);
 
+    // Redirect logged-in members from public link to full authenticated view
+    useEffect(() => {
+        if (isPublicView && user && group) {
+            // Check if the logged-in user is a member of this group
+            const isMember = group.members?.some(member => member.user_id === user.id);
+            if (isMember) {
+                // Redirect to the authenticated group view
+                navigate(`/groups/${group.id}`, { replace: true });
+            }
+        }
+    }, [isPublicView, user, group, navigate]);
+
     const handleAddMember = () => {
         fetchGroupData();
     };
