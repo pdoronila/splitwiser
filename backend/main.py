@@ -9,8 +9,8 @@ import requests
 
 import models, schemas, auth, database
 from database import engine, get_db
-# from ocr.service import ocr_service
-# from ocr.parser import parse_receipt_items
+from ocr.service import ocr_service
+from ocr.parser import parse_receipt_items
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -1563,14 +1563,33 @@ async def scan_receipt(
     try:
         # Read image file
         image_content = await file.read()
+        print(f"Starting receipt scan... Image size: {len(image_content)} bytes")
         
-        # TODO: Add OCR processing logic here
-        # For now, return empty response
-        items = []
-        raw_text = ""
+        # OCD processing
+        print("Calling Vision API...")
+        vision_response = ocr_service.extract_text(image_content)
+        print("Vision API response received")
+        
+        # Log response stats
+        if vision_response.text_annotations:
+            print(f"Number of text annotations: {len(vision_response.text_annotations)}")
+            full_text = vision_response.text_annotations[0].description
+            print(f"Raw text length: {len(full_text)}")
+            print(f"First 100 chars of raw text: {full_text[:100]}...")
+            raw_text = full_text
+        else:
+            print("No text annotations found in response")
+            raw_text = ""
+
+        # Parse items
+        items = parse_receipt_items(vision_response)
+        print(f"Parsed items count: {len(items)}")
+        for item in items:
+            print(f" - Found item: {item}")
         
         # Calculate total
         total = sum(item['price'] for item in items)
+        print(f"Calculated total from items: {total}")
 
         return {
             "items": items,
