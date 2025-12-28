@@ -668,14 +668,16 @@ const GroupDetailPage: React.FC = () => {
                             </h1>
                         </div>
                         <div className="flex gap-1 lg:gap-2 flex-shrink-0">
+                            {!isPublicView && (
+                                <button
+                                    onClick={handleShareGroup}
+                                    className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                                >
+                                    Share
+                                </button>
+                            )}
                             {!isPublicView && isOwner && (
                                 <>
-                                    <button
-                                        onClick={handleShareGroup}
-                                        className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
-                                    >
-                                        Share
-                                    </button>
                                     <button
                                         onClick={() => setIsEditModalOpen(true)}
                                         className="px-2 lg:px-3 py-1 text-xs lg:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"

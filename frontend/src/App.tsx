@@ -7,6 +7,7 @@ import SettleUpModal from './SettleUpModal';
 import AddGroupModal from './AddGroupModal';
 import AddFriendModal from './AddFriendModal';
 import GroupDetailPage from './GroupDetailPage';
+import FriendDetailPage from './FriendDetailPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { SyncProvider } from './contexts/SyncContext';
@@ -160,7 +161,14 @@ const Dashboard = () => {
             </div>
             <ul className="space-y-1">
               {[...friends].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(friend => (
-                <li key={friend.id} className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 px-2 py-1 cursor-pointer">
+                <li
+                  key={friend.id}
+                  className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 cursor-pointer rounded transition-colors"
+                  onClick={() => {
+                    navigate(`/friends/${friend.id}`);
+                    setIsSidebarOpen(false);
+                  }}
+                >
                   {friend.full_name}
                 </li>
               ))}
@@ -407,6 +415,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/" element={<ProtectedRoute element={<Dashboard />} />} />
               <Route path="/groups/:groupId" element={<ProtectedRoute element={<GroupDetailPage />} />} />
+              <Route path="/friends/:friendId" element={<ProtectedRoute element={<FriendDetailPage />} />} />
               <Route path="/share/:shareLinkId" element={<GroupDetailPage />} />
             </Routes>
             <SyncStatusBar />

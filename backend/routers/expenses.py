@@ -272,9 +272,13 @@ def update_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Only the creator can edit the expense
-    if expense.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the expense creator can edit this expense")
+    # Verify user is a member of the group (all group members can edit expenses)
+    if expense.group_id:
+        verify_group_membership(db, expense.group_id, current_user.id)
+    else:
+        # For non-group expenses, only the creator can edit
+        if expense.created_by_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the expense creator can edit this expense")
 
     # Handle ITEMIZED split type
     if expense_update.split_type == "ITEMIZED":
@@ -391,9 +395,13 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Only the creator can delete the expense
-    if expense.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the expense creator can delete this expense")
+    # Verify user is a member of the group (all group members can delete expenses)
+    if expense.group_id:
+        verify_group_membership(db, expense.group_id, current_user.id)
+    else:
+        # For non-group expenses, only the creator can delete
+        if expense.created_by_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the expense creator can delete this expense")
 
     # Delete item assignments first
     items = db.query(models.ExpenseItem).filter(

@@ -455,10 +455,11 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
     if (!isOpen) return null;
 
-    const canEdit = !readOnly && expense?.created_by_id === currentUserId;
+    // All group members can edit/delete expenses (not just the creator)
+    const canEdit = !readOnly;
 
     return (
-        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 z-40 flex items-end md:items-center justify-center">
             {showParticipantSelector && (
                 <ParticipantSelector
                     isOpen={true}
@@ -482,7 +483,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                     itemDescription={itemizedExpense.itemizedItems[itemizedExpense.editingItemIndex]?.description || ''}
                 />
             )}
-            <div className="bg-white dark:bg-gray-800 w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
+            <div className="bg-white dark:bg-gray-800 w-full md:w-[448px] max-h-[90vh] rounded-t-2xl md:rounded-2xl shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
                 {isLoading ? (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
                 ) : error ? (

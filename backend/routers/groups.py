@@ -160,12 +160,14 @@ def share_group(
     current_user: Annotated[models.User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
-    group = verify_group_ownership(db, group_id, current_user.id)
-    
+    # Any group member can share the group
+    verify_group_membership(db, group_id, current_user.id)
+    group = get_group_or_404(db, group_id)
+
     if not group.share_link_id:
         import uuid
         group.share_link_id = str(uuid.uuid4())
-    
+
     group.is_public = True
     db.commit()
     db.refresh(group)
@@ -178,7 +180,9 @@ def unshare_group(
     current_user: Annotated[models.User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
-    group = verify_group_ownership(db, group_id, current_user.id)
+    # Any group member can unshare the group
+    verify_group_membership(db, group_id, current_user.id)
+    group = get_group_or_404(db, group_id)
     group.is_public = False
     db.commit()
     db.refresh(group)

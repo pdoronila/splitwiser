@@ -38,6 +38,7 @@ interface AddExpenseModalProps {
     friends: Friend[];
     groups?: Group[];
     preselectedGroupId?: number | null;
+    preselectedFriendId?: number | null;
 }
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -46,7 +47,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     onExpenseAdded,
     friends,
     groups = [],
-    preselectedGroupId = null
+    preselectedGroupId = null,
+    preselectedFriendId = null
 }) => {
     const { user } = useAuth();
     const { isOnline: _isOnline } = useSync();
@@ -84,7 +86,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const resetForm = () => {
         setDescription('');
         setAmount('');
-        setSelectedFriendIds([]);
+        setSelectedFriendIds(preselectedFriendId ? [preselectedFriendId] : []);
         setSelectedGuestIds([]);
         setSelectedGroupId(preselectedGroupId);
 
@@ -111,7 +113,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         if (isOpen) {
             resetForm();
         }
-    }, [isOpen, preselectedGroupId, user?.id]);
+    }, [isOpen, preselectedGroupId, preselectedFriendId, user?.id]);
 
     const handleScannedItems = (items: { description: string, price: number }[], receiptPath?: string) => {
         setScannedItems(items);
@@ -430,7 +432,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-40 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900/75 bg-opacity-50 z-40 flex items-end md:items-center justify-center">
             {showScanner && (
                 <ReceiptScanner
                     onItemsDetected={handleScannedItems}
@@ -460,7 +462,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     itemDescription={itemizedExpense.itemizedItems[itemizedExpense.editingItemIndex]?.description || ''}
                 />
             )}
-            <div className="bg-white dark:bg-gray-800 w-full h-full sm:w-full sm:max-w-md sm:h-auto sm:max-h-[90vh] sm:rounded-lg shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
+            <div className="bg-white dark:bg-gray-800 w-full md:w-[448px] max-h-[90vh] rounded-t-2xl md:rounded-2xl shadow-xl dark:shadow-gray-900/50 overflow-y-auto flex flex-col">
                 <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-xl font-bold dark:text-gray-100">Add an expense</h2>
                     <button
@@ -501,7 +503,71 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         )}
 
                         <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">With you and:</label>
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Description:</label>
+                            <div className="flex items-center gap-2">
+                                <IconSelector
+                                    selectedIcon={selectedIcon}
+                                    onIconSelect={setSelectedIcon}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Enter a description"
+                                    className="flex-1 border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
+                                    value={description}
+                                    onChange={e => setDescription(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mb-4 flex items-center space-x-2">
+                            <select
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700 dark:text-gray-200 dark:bg-gray-700"
+                            >
+                                {sortedCurrencies.map(c => (
+                                    <option key={c.code} value={c.code}>
+                                        {formatCurrencyDisplay(c.code)}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0.00"
+                                className={`w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 text-lg dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 ${splitType === 'ITEMIZED' ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                value={splitType === 'ITEMIZED' ? calculateItemizedTotal(itemizedExpense.itemizedItems, itemizedExpense.taxAmount, itemizedExpense.tipAmount) : amount}
+                                onChange={e => setAmount(e.target.value)}
+                                disabled={splitType === 'ITEMIZED'}
+                                required={splitType !== 'ITEMIZED'}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
+                            <input
+                                type="date"
+                                className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
+                                value={expenseDate}
+                                onChange={(e) => setExpenseDate(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Notes:</label>
+                            <textarea
+                                className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                                placeholder="Add notes (optional)"
+                                rows={2}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Participants:</label>
                             {getAvailableParticipants().length === 1 ? (
                                 <div className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
                                     {selectedGroup ? 'No other members in this group' : 'Add friends or select a group with members to split expenses'}
@@ -571,70 +637,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                 </select>
                             </div>
                         )}
-
-                        <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Description:</label>
-                            <div className="flex items-center gap-2">
-                                <IconSelector
-                                    selectedIcon={selectedIcon}
-                                    onIconSelect={setSelectedIcon}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Enter a description"
-                                    className="flex-1 border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mb-4 flex items-center space-x-2">
-                            <select
-                                value={currency}
-                                onChange={(e) => setCurrency(e.target.value)}
-                                className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700 dark:text-gray-200 dark:bg-gray-700"
-                            >
-                                {sortedCurrencies.map(c => (
-                                    <option key={c.code} value={c.code}>
-                                        {formatCurrencyDisplay(c.code)}
-                                    </option>
-                                ))}
-                            </select>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="0.00"
-                                className={`w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 text-lg dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 ${splitType === 'ITEMIZED' ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
-                                value={splitType === 'ITEMIZED' ? calculateItemizedTotal(itemizedExpense.itemizedItems, itemizedExpense.taxAmount, itemizedExpense.tipAmount) : amount}
-                                onChange={e => setAmount(e.target.value)}
-                                disabled={splitType === 'ITEMIZED'}
-                                required={splitType !== 'ITEMIZED'}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
-                            <input
-                                type="date"
-                                className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
-                                value={expenseDate}
-                                onChange={(e) => setExpenseDate(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Notes:</label>
-                            <textarea
-                                className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-                                placeholder="Add notes (optional)"
-                                rows={2}
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                            />
-                        </div>
 
                         <div className="mb-4">
                             <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Split by:</label>

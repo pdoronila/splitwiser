@@ -239,3 +239,14 @@ class Balance(BaseModel):
     is_guest: bool = False
     group_name: Optional[str] = None
     group_id: Optional[int] = None
+
+
+class FriendBalance(BaseModel):
+    """Balance between current user and a specific friend."""
+    amount: float  # Positive = friend owes you, negative = you owe friend
+    currency: str
+
+
+class FriendExpenseWithSplits(ExpenseWithSplits):
+    """Expense with group name for friend detail page."""
+    group_name: Optional[str] = None

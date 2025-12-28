@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { getApiUrl } from './api';
 import { formatDateForInput } from './utils/formatters';
@@ -14,15 +14,25 @@ interface SettleUpModalProps {
     onClose: () => void;
     onSettled: () => void;
     friends: Friend[];
+    preselectedFriendId?: number | null;
 }
 
-const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettled, friends }) => {
+const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettled, friends, preselectedFriendId = null }) => {
     const { user } = useAuth();
     const [payerId] = useState<number>(user?.id || 0);
-    const [recipientId, setRecipientId] = useState<number>(friends[0]?.id || 0);
+    const [recipientId, setRecipientId] = useState<number>(preselectedFriendId || friends[0]?.id || 0);
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('USD');
     const [currencies] = useState<string[]>(['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'CNY', 'HKD']);
+
+    // Reset recipient when modal opens with preselected friend
+    useEffect(() => {
+        if (isOpen) {
+            setRecipientId(preselectedFriendId || friends[0]?.id || 0);
+            setAmount('');
+            setCurrency('USD');
+        }
+    }, [isOpen, preselectedFriendId, friends]);
 
     if (!isOpen) return null;
 

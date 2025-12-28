@@ -129,6 +129,24 @@ export const friendsApi = {
         return response.json();
     },
 
+    getById: async (friendId: number) => {
+        const response = await apiFetch(`/friends/${friendId}`);
+        if (!response.ok) throw new Error('Failed to fetch friend');
+        return response.json();
+    },
+
+    getExpenses: async (friendId: number) => {
+        const response = await apiFetch(`/friends/${friendId}/expenses`);
+        if (!response.ok) throw new Error('Failed to fetch friend expenses');
+        return response.json();
+    },
+
+    getBalance: async (friendId: number) => {
+        const response = await apiFetch(`/friends/${friendId}/balance`);
+        if (!response.ok) throw new Error('Failed to fetch friend balance');
+        return response.json();
+    },
+
     add: async (email: string) => {
         const response = await apiFetch('/friends', {
             method: 'POST',
