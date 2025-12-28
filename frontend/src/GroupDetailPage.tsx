@@ -10,6 +10,7 @@ import ExpenseDetailModal from './ExpenseDetailModal';
 import AddMemberModal from './AddMemberModal';
 import AddGuestModal from './AddGuestModal';
 import ManageGuestModal from './ManageGuestModal';
+import AlertDialog from './components/AlertDialog';
 
 interface GroupMember {
     id: number;
@@ -101,6 +102,18 @@ const GroupDetailPage: React.FC = () => {
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'alert' | 'confirm' | 'success' | 'error';
+        onConfirm?: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'alert'
+    });
     const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
 
     const [showInGroupCurrency, setShowInGroupCurrency] = useState(true);
@@ -219,7 +232,12 @@ const GroupDetailPage: React.FC = () => {
             }
         } else {
             const err = await response.json();
-            alert(err.detail || 'Failed to remove member');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: err.detail || 'Failed to remove member',
+                type: 'error'
+            });
         }
     };
 
@@ -238,7 +256,12 @@ const GroupDetailPage: React.FC = () => {
             fetchGroupData();
         } else {
             const err = await response.json();
-            alert(err.detail || 'Failed to remove guest');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: err.detail || 'Failed to remove guest',
+                type: 'error'
+            });
         }
     };
 
@@ -253,7 +276,12 @@ const GroupDetailPage: React.FC = () => {
             fetchGroupData();
         } else {
             const err = await response.json();
-            alert(err.detail || 'Failed to claim guest');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: err.detail || 'Failed to claim guest',
+                type: 'error'
+            });
         }
     };
 
@@ -307,7 +335,12 @@ const GroupDetailPage: React.FC = () => {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     try {
                         await navigator.clipboard.writeText(shareUrl);
-                        alert('Public share link copied to clipboard!');
+                        setAlertDialog({
+                            isOpen: true,
+                            title: 'Success',
+                            message: 'Public share link copied to clipboard!',
+                            type: 'success'
+                        });
                         return;
                     } catch (clipErr) {
                         // Clipboard failed, fall through to legacy method
@@ -327,23 +360,48 @@ const GroupDetailPage: React.FC = () => {
                 try {
                     const successful = document.execCommand('copy');
                     if (successful) {
-                        alert('Public share link copied to clipboard!');
+                        setAlertDialog({
+                            isOpen: true,
+                            title: 'Success',
+                            message: 'Public share link copied to clipboard!',
+                            type: 'success'
+                        });
                     } else {
                         // If all methods fail, show the URL
-                        alert(`Share this link:\n${shareUrl}`);
+                        setAlertDialog({
+                            isOpen: true,
+                            title: 'Share Link',
+                            message: `Share this link:\n${shareUrl}`,
+                            type: 'alert'
+                        });
                     }
                 } catch (execErr) {
                     // Show the URL as last resort
-                    alert(`Share this link:\n${shareUrl}`);
+                    setAlertDialog({
+                        isOpen: true,
+                        title: 'Share Link',
+                        message: `Share this link:\n${shareUrl}`,
+                        type: 'alert'
+                    });
                 } finally {
                     document.body.removeChild(textarea);
                 }
             } else {
-                alert('Failed to enable sharing');
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Error',
+                    message: 'Failed to enable sharing',
+                    type: 'error'
+                });
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to share group');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: 'Failed to share group',
+                type: 'error'
+            });
         }
     };
 
@@ -378,11 +436,21 @@ const GroupDetailPage: React.FC = () => {
                 navigate(`/groups/${result.group_id}`, { replace: true });
             } else {
                 const error = await response.json();
-                alert(error.detail || 'Failed to join group');
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Error',
+                    message: error.detail || 'Failed to join group',
+                    type: 'error'
+                });
             }
         } catch (err) {
             console.error('Error joining group:', err);
-            alert('Failed to join group');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: 'Failed to join group',
+                type: 'error'
+            });
         }
     };
 
@@ -1029,6 +1097,16 @@ const GroupDetailPage: React.FC = () => {
                     setIsManageGuestModalOpen(false);
                     setSelectedGuest(null);
                 }}
+            />
+
+            {/* Alert Dialog */}
+            <AlertDialog
+                isOpen={alertDialog.isOpen}
+                onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+                onConfirm={alertDialog.onConfirm}
+                title={alertDialog.title}
+                message={alertDialog.message}
+                type={alertDialog.type}
             />
         </div>
     );

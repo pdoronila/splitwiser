@@ -6,6 +6,7 @@ export const useItemizedExpense = () => {
     const [taxAmount, setTaxAmount] = useState<string>('');
     const [tipAmount, setTipAmount] = useState<string>('');
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+    const [showAddItemModal, setShowAddItemModal] = useState(false);
 
     // Calculate subtotal (before tax/tip) in cents
     const getSubtotalCents = () => {
@@ -19,19 +20,15 @@ export const useItemizedExpense = () => {
         setTipAmount((tipCents / 100).toFixed(2));
     };
 
-    const addManualItem = () => {
-        const description = prompt("Item description:");
-        if (!description) return;
+    const openAddItemModal = () => {
+        setShowAddItemModal(true);
+    };
 
-        const priceStr = prompt("Price (in dollars, e.g., 12.99):");
-        if (!priceStr) return;
+    const closeAddItemModal = () => {
+        setShowAddItemModal(false);
+    };
 
-        const price = Math.round(parseFloat(priceStr) * 100);
-        if (isNaN(price) || price <= 0) {
-            alert("Invalid price");
-            return;
-        }
-
+    const addManualItem = (description: string, price: number) => {
         setItemizedItems(prev => [...prev, {
             description,
             price,
@@ -84,12 +81,15 @@ export const useItemizedExpense = () => {
         taxAmount,
         tipAmount,
         editingItemIndex,
+        showAddItemModal,
         setItemizedItems,
         setTaxAmount,
         setTipAmount,
         setTipFromPercentage,
         getSubtotalCents,
         setEditingItemIndex,
+        openAddItemModal,
+        closeAddItemModal,
         addManualItem,
         removeItem,
         toggleItemAssignment,
