@@ -283,7 +283,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             const finalizeItemizedExpense = async () => {
                 setIsSubmitting(true);
                 try {
-                    const allItems = [...itemizedExpense.itemizedItems];
+                    // Map items to include split_type and properly formatted split_details
+                    const allItems = itemizedExpense.itemizedItems.map(item => ({
+                        description: item.description,
+                        price: item.price,
+                        is_tax_tip: item.is_tax_tip,
+                        assignments: item.assignments,
+                        split_type: item.split_type || 'EQUAL',
+                        split_details: item.split_details || undefined
+                    }));
+
                     const tax = Math.round(parseFloat(itemizedExpense.taxAmount || '0') * 100);
                     const tip = Math.round(parseFloat(itemizedExpense.tipAmount || '0') * 100);
 
@@ -293,7 +302,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                             description: 'Tax',
                             price: tax,
                             is_tax_tip: true,
-                            assignments: []
+                            assignments: [],
+                            split_type: 'EQUAL',
+                            split_details: undefined
                         });
                     }
 
@@ -303,7 +314,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                             description: 'Tip',
                             price: tip,
                             is_tax_tip: true,
-                            assignments: []
+                            assignments: [],
+                            split_type: 'EQUAL',
+                            split_details: undefined
                         });
                     }
 
@@ -889,6 +902,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                         onToggleAssignment={itemizedExpense.toggleItemAssignment}
                                         onRemoveItem={itemizedExpense.removeItem}
                                         onOpenSelector={itemizedExpense.setEditingItemIndex}
+                                        onChangeSplitType={itemizedExpense.changeSplitType}
+                                        onUpdateSplitDetail={itemizedExpense.updateSplitDetail}
                                         getParticipantName={getParticipantName}
                                         currentUserId={user?.id}
                                     />

@@ -33,7 +33,8 @@ export const useItemizedExpense = () => {
             description,
             price,
             is_tax_tip: false,
-            assignments: []
+            assignments: [],
+            split_type: 'EQUAL'
         }]);
     };
 
@@ -76,6 +77,63 @@ export const useItemizedExpense = () => {
         setItemizedItems(items);
     };
 
+    const changeSplitType = (itemIdx: number, splitType: 'EQUAL' | 'EXACT' | 'PERCENT' | 'SHARES') => {
+        setItemizedItems(prev => {
+            const updated = [...prev];
+            const item = updated[itemIdx];
+
+            // Initialize split_details with defaults for all assignees when switching to non-EQUAL
+            let newSplitDetails = undefined;
+            if (splitType !== 'EQUAL' && item.assignments) {
+                newSplitDetails = {};
+                item.assignments.forEach(assignment => {
+                    const key = assignment.is_guest ? `guest_${assignment.user_id}` : `user_${assignment.user_id}`;
+                    // Use existing value if present, otherwise set defaults
+                    if (item.split_details && item.split_details[key]) {
+                        newSplitDetails[key] = item.split_details[key];
+                    } else {
+                        // Set default values based on split type
+                        if (splitType === 'SHARES') {
+                            newSplitDetails[key] = { shares: 1 };
+                        } else if (splitType === 'PERCENT') {
+                            const equalPercent = Math.floor(100 / item.assignments.length);
+                            newSplitDetails[key] = { percentage: equalPercent };
+                        } else if (splitType === 'EXACT') {
+                            const equalAmount = Math.floor(item.price / item.assignments.length);
+                            newSplitDetails[key] = { amount: equalAmount };
+                        }
+                    }
+                });
+            }
+
+            updated[itemIdx] = {
+                ...item,
+                split_type: splitType,
+                split_details: newSplitDetails
+            };
+            return updated;
+        });
+    };
+
+    const updateSplitDetail = (itemIdx: number, participantKey: string, details: { amount?: number; percentage?: number; shares?: number }) => {
+        setItemizedItems(prev => {
+            const updated = [...prev];
+            const item = { ...updated[itemIdx] };
+
+            if (!item.split_details) {
+                item.split_details = {};
+            }
+
+            item.split_details[participantKey] = {
+                ...item.split_details[participantKey],
+                ...details
+            };
+
+            updated[itemIdx] = item;
+            return updated;
+        });
+    };
+
     return {
         itemizedItems,
         taxAmount,
@@ -94,6 +152,8 @@ export const useItemizedExpense = () => {
         removeItem,
         toggleItemAssignment,
         updateItemAssignments,
-        setItems
+        setItems,
+        changeSplitType,
+        updateSplitDetail
     };
 };

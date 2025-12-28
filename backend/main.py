@@ -14,7 +14,7 @@ import models
 from database import engine
 
 # Import routers
-from routers import auth, groups, members, expenses, balances, friends, receipts, profile, password_recovery
+from routers import auth, groups, members, expenses, balances, friends, ocr, profile, password_recovery
 
 
 # Create database tables
@@ -70,4 +70,4 @@ app.include_router(members.router)
 app.include_router(expenses.router)
 app.include_router(balances.router)
 app.include_router(friends.router)
-app.include_router(receipts.router)
+app.include_router(ocr.router)

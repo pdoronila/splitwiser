@@ -9,7 +9,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user
-from utils.validation import get_group_or_404, verify_group_membership, validate_expense_participants
+from utils.validation import get_group_or_404, verify_group_membership, validate_expense_participants, validate_item_split_details
 from utils.splits import calculate_itemized_splits
 from utils.currency import get_exchange_rate_for_expense
 from utils.display import get_guest_display_name
@@ -75,6 +75,10 @@ def create_expense(
         splits=expense.splits,
         items=expense.items if expense.split_type == "ITEMIZED" else None
     )
+
+    # Validate item split details if itemized expense
+    if expense.split_type == "ITEMIZED" and expense.items:
+        validate_item_split_details(expense.items)
 
     # Fetch and cache the historical exchange rate for this expense
     exchange_rate = get_exchange_rate_for_expense(expense.date, expense.currency)
@@ -313,6 +317,10 @@ def update_expense(
         splits=expense_update.splits,
         items=expense_update.items if expense_update.split_type == "ITEMIZED" else None
     )
+
+    # Validate item split details if itemized expense
+    if expense_update.split_type == "ITEMIZED" and expense_update.items:
+        validate_item_split_details(expense_update.items)
 
     # Update expense fields
     # Normalize the date first for accurate comparison

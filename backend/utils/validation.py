@@ -81,3 +81,94 @@ def validate_expense_participants(
                         user = db.query(models.User).filter(models.User.id == assignment.user_id).first()
                         if not user:
                             raise HTTPException(status_code=400, detail=f"User with ID {assignment.user_id} not found in item assignments")
+
+
+def validate_item_split_details(items: list[schemas.ExpenseItemCreate]) -> None:
+    """Validate that item split details are valid for their split types."""
+    for item_idx, item in enumerate(items):
+        if not hasattr(item, 'split_type'):
+            continue
+
+        split_type = item.split_type
+        split_details = getattr(item, 'split_details', {}) or {}
+
+        # Skip validation for EQUAL splits
+        if split_type == 'EQUAL' or len(item.assignments) <= 1:
+            continue
+
+        # Validate that split_details exist for non-EQUAL splits
+        if split_type != 'EQUAL' and not split_details:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Item {item_idx + 1}: Split details required for {split_type} split"
+            )
+
+        # Validate EXACT splits
+        if split_type == 'EXACT':
+            total_amount = 0
+            for assignment in item.assignments:
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'amount'):
+                    amount = detail.amount or 0
+                elif isinstance(detail, dict):
+                    amount = detail.get('amount', 0)
+                else:
+                    amount = 0
+                total_amount += amount
+
+            # Allow small discrepancy for rounding
+            if abs(total_amount - item.price) > len(item.assignments):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Item {item_idx + 1}: Exact amounts (${total_amount/100:.2f}) don't match item price (${item.price/100:.2f})"
+                )
+
+        # Validate PERCENT splits
+        elif split_type == 'PERCENT':
+            total_percentage = 0
+            for assignment in item.assignments:
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'percentage'):
+                    percentage = detail.percentage or 0
+                elif isinstance(detail, dict):
+                    percentage = detail.get('percentage', 0)
+                else:
+                    percentage = 0
+                total_percentage += percentage
+
+            # Allow small discrepancy for rounding
+            if abs(total_percentage - 100) > 0.01:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Item {item_idx + 1}: Percentages must add up to 100% (currently {total_percentage}%)"
+                )
+
+        # Validate SHARES splits
+        elif split_type == 'SHARES':
+            total_shares = 0
+            for assignment in item.assignments:
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'shares'):
+                    shares = detail.shares if detail.shares is not None else 1
+                elif isinstance(detail, dict):
+                    shares = detail.get('shares', 1)
+                else:
+                    shares = 1
+                if shares < 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Item {item_idx + 1}: Shares must be at least 1"
+                    )
+                total_shares += shares
+
+            if total_shares == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Item {item_idx + 1}: Total shares must be greater than 0"
+                )
