@@ -58,6 +58,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const [currency, setCurrency] = useState('USD');
     const [selectedFriendIds, setSelectedFriendIds] = useState<number[]>([]);
     const [selectedGuestIds, setSelectedGuestIds] = useState<number[]>([]);
+    const [currentUserSelected, setCurrentUserSelected] = useState<boolean>(true);
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(preselectedGroupId);
     const [splitType, setSplitType] = useState<SplitType>('EQUAL');
     const [showScanner, setShowScanner] = useState(false);
@@ -88,6 +89,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         setAmount('');
         setSelectedFriendIds(preselectedFriendId ? [preselectedFriendId] : []);
         setSelectedGuestIds([]);
+        setCurrentUserSelected(true);
         setSelectedGroupId(preselectedGroupId);
 
         // Reset currency to preselected group's default or USD
@@ -141,7 +143,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
     const getAllParticipants = (): Participant[] => {
         const participants: Participant[] = [];
-        participants.push({ id: user!.id, name: 'You', isGuest: false });
+
+        // Only include current user if selected
+        if (currentUserSelected) {
+            participants.push({ id: user!.id, name: 'You', isGuest: false });
+        }
 
         selectedFriendIds.forEach(fid => {
             const friend = friends.find(f => f.id === fid);
@@ -352,7 +358,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
     const getCurrentlySelectedParticipants = (): Participant[] => {
         const selected: Participant[] = [];
-        selected.push({ id: user!.id, name: 'You', isGuest: false });
+
+        // Only include current user if selected
+        if (currentUserSelected) {
+            selected.push({ id: user!.id, name: 'You', isGuest: false });
+        }
+
         selectedFriendIds.forEach(fid => {
             const friend = friends.find(f => f.id === fid);
             if (friend) {
@@ -371,10 +382,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const handleMainParticipantSelectorConfirm = (selectedParticipants: Participant[]) => {
         setSelectedFriendIds([]);
         setSelectedGuestIds([]);
+        setCurrentUserSelected(false);
+
         selectedParticipants.forEach(p => {
             if (p.isGuest) {
                 setSelectedGuestIds(prev => [...prev, p.id]);
-            } else if (p.id !== user?.id) {
+            } else if (p.id === user?.id) {
+                setCurrentUserSelected(true);
+            } else {
                 setSelectedFriendIds(prev => [...prev, p.id]);
             }
         });
@@ -391,7 +406,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
     const getSelectedParticipantsDisplay = (): string => {
         const total = selectedFriendIds.length + selectedGuestIds.length;
-        if (total === 0) return 'Select people';
+        const totalWithCurrentUser = total + (currentUserSelected ? 1 : 0);
+
+        if (totalWithCurrentUser === 0) return 'Select people';
+
+        // If only current user selected
+        if (totalWithCurrentUser === 1 && currentUserSelected) return 'You';
+
+        // If current user not selected
+        if (!currentUserSelected) {
+            if (total === 1) {
+                const friend = friends.find(f => selectedFriendIds.includes(f.id));
+                if (friend) return friend.full_name;
+                const guest = groupGuests.find(g => selectedGuestIds.includes(g.id));
+                if (guest) return guest.name;
+            }
+            return `${total} people selected`;
+        }
+
+        // If current user is selected plus others
         if (total === 1) {
             const friend = friends.find(f => selectedFriendIds.includes(f.id));
             if (friend) return `You and ${friend.full_name}`;
@@ -586,16 +619,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                             ) : (
                                 <div className="flex flex-wrap gap-2">
                                     {getAvailableParticipants()
-                                        .filter(p => p.name !== 'You')
-                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .sort((a, b) => {
+                                            // "You" always first
+                                            if (a.name === 'You') return -1;
+                                            if (b.name === 'You') return 1;
+                                            return a.name.localeCompare(b.name);
+                                        })
                                         .map(participant => {
                                             const key = participant.isGuest ? `guest-${participant.id}` : `friend-${participant.id}`;
-                                            const isSelected = participant.isGuest
-                                                ? selectedGuestIds.includes(participant.id)
-                                                : selectedFriendIds.includes(participant.id);
-                                            const toggleFn = participant.isGuest
-                                                ? () => toggleGuest(participant.id)
-                                                : () => toggleFriend(participant.id);
+                                            const isCurrentUser = participant.id === user?.id && !participant.isGuest;
+                                            const isSelected = isCurrentUser
+                                                ? currentUserSelected
+                                                : participant.isGuest
+                                                    ? selectedGuestIds.includes(participant.id)
+                                                    : selectedFriendIds.includes(participant.id);
+                                            const toggleFn = isCurrentUser
+                                                ? () => setCurrentUserSelected(!currentUserSelected)
+                                                : participant.isGuest
+                                                    ? () => toggleGuest(participant.id)
+                                                    : () => toggleFriend(participant.id);
 
                                             return (
                                                 <button
