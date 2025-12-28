@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getApiUrl } from './api';
+import AlertDialog from './components/AlertDialog';
 
 interface ReceiptScannerProps {
     onItemsDetected: (items: { description: string, price: number }[], receiptPath?: string) => void;
@@ -10,6 +11,17 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
     const [image, setImage] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [alertDialog, setAlertDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'alert' | 'confirm' | 'success' | 'error';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'alert'
+    });
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -57,7 +69,12 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
 
         } catch (error: any) {
             console.error(error);
-            alert(`Failed to scan receipt: ${error.message}`);
+            setAlertDialog({
+                isOpen: true,
+                title: 'Scan Failed',
+                message: `Failed to scan receipt: ${error.message}`,
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }
@@ -110,6 +127,15 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
                     </button>
                 </div>
             </div>
+
+            {/* Alert Dialog */}
+            <AlertDialog
+                isOpen={alertDialog.isOpen}
+                onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+                title={alertDialog.title}
+                message={alertDialog.message}
+                type={alertDialog.type}
+            />
         </div>
     );
 };

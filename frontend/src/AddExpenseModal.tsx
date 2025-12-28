@@ -6,6 +6,8 @@ import ExpenseSplitTypeSelector from './components/expense/ExpenseSplitTypeSelec
 import ExpenseItemList from './components/expense/ExpenseItemList';
 import SplitDetailsInput from './components/expense/SplitDetailsInput';
 import IconSelector from './components/expense/IconSelector';
+import AddItemModal from './components/AddItemModal';
+import AlertDialog from './components/AlertDialog';
 import { useItemizedExpense } from './hooks/useItemizedExpense';
 import { useSplitDetails } from './hooks/useSplitDetails';
 import { useCurrencyPreferences } from './hooks/useCurrencyPreferences';
@@ -70,6 +72,18 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const [payerIsGuest, setPayerIsGuest] = useState<boolean>(false);
     const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
+    const [alertDialog, setAlertDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'alert' | 'confirm' | 'success' | 'error';
+        onConfirm?: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'alert'
+    });
 
     // Use custom hooks
     const itemizedExpense = useItemizedExpense();
@@ -183,21 +197,36 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         } else if (splitType === 'EXACT') {
             const result = calculateExactSplit(totalAmountCents, participants, splitDetails);
             if (result.error) {
-                alert(result.error);
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Invalid Split',
+                    message: result.error,
+                    type: 'error'
+                });
                 return;
             }
             splits = result.splits;
         } else if (splitType === 'PERCENT') {
             const result = calculatePercentSplit(totalAmountCents, participants, splitDetails);
             if (result.error) {
-                alert(result.error);
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Invalid Split',
+                    message: result.error,
+                    type: 'error'
+                });
                 return;
             }
             splits = result.splits;
         } else if (splitType === 'SHARES') {
             const result = calculateSharesSplit(totalAmountCents, participants, splitDetails);
             if (result.error) {
-                alert(result.error);
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Invalid Split',
+                    message: result.error,
+                    type: 'error'
+                });
                 return;
             }
             splits = result.splits;
@@ -223,7 +252,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 item => !item.is_tax_tip && item.assignments.length === 0
             );
             if (unassigned.length > 0) {
-                alert(`Please assign all items. Unassigned: ${unassigned.map(i => i.description).join(', ')}`);
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Unassigned Items',
+                    message: `Please assign all items. Unassigned: ${unassigned.map(i => i.description).join(', ')}`,
+                    type: 'error'
+                });
                 return;
             }
 
@@ -241,55 +275,85 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 return !participantsWithItems.has(key);
             });
 
+            // Helper function to finalize itemized expense
+            const finalizeItemizedExpense = async () => {
+                const allItems = [...itemizedExpense.itemizedItems];
+                const tax = Math.round(parseFloat(itemizedExpense.taxAmount || '0') * 100);
+                const tip = Math.round(parseFloat(itemizedExpense.tipAmount || '0') * 100);
+
+                // Add Tax as a separate item if present
+                if (tax > 0) {
+                    allItems.push({
+                        description: 'Tax',
+                        price: tax,
+                        is_tax_tip: true,
+                        assignments: []
+                    });
+                }
+
+                // Add Tip as a separate item if present
+                if (tip > 0) {
+                    allItems.push({
+                        description: 'Tip',
+                        price: tip,
+                        is_tax_tip: true,
+                        assignments: []
+                    });
+                }
+
+                const itemsTotal = allItems.reduce((sum, item) => sum + item.price, 0);
+
+                const itemizedPayload = {
+                    description,
+                    amount: itemsTotal,
+                    currency,
+                    date: expenseDate,
+                    payer_id: payerId,
+                    payer_is_guest: payerIsGuest,
+                    group_id: selectedGroupId,
+                    split_type: 'ITEMIZED',
+                    items: allItems,
+                    splits: [],
+                    icon: selectedIcon,
+                    receipt_image_path: receiptImagePath,
+                    notes: notes
+                };
+
+                const result = await offlineExpensesApi.create(itemizedPayload);
+
+                if (result.success) {
+                    recordCurrencyUsage(currency);
+                    if (result.offline) {
+                        console.log('Expense created offline and queued for sync');
+                    }
+                    onExpenseAdded();
+                    onClose();
+                    resetForm();
+                } else {
+                    setAlertDialog({
+                        isOpen: true,
+                        title: 'Error',
+                        message: 'Failed to add expense',
+                        type: 'error'
+                    });
+                }
+            };
+
+            // Check for participants without items
             if (participantsWithoutItems.length > 0) {
                 const names = participantsWithoutItems.map(p => p.name).join(', ');
-                const proceed = window.confirm(
-                    `Warning: The following participant(s) have no items assigned and will not be included in this expense:\n\n${names}\n\nDo you want to continue?`
-                );
-                if (!proceed) return;
-            }
-
-            const allItems = [...itemizedExpense.itemizedItems];
-            const tax = Math.round(parseFloat(itemizedExpense.taxAmount || '0') * 100);
-            const tip = Math.round(parseFloat(itemizedExpense.tipAmount || '0') * 100);
-
-            // Add Tax as a separate item if present
-            if (tax > 0) {
-                allItems.push({
-                    description: 'Tax',
-                    price: tax,
-                    is_tax_tip: true,
-                    assignments: []
+                setAlertDialog({
+                    isOpen: true,
+                    title: 'Warning',
+                    message: `The following participant(s) have no items assigned and will not be included in this expense:\n\n${names}\n\nDo you want to continue?`,
+                    type: 'confirm',
+                    onConfirm: finalizeItemizedExpense
                 });
+                return;
             }
 
-            // Add Tip as a separate item if present
-            if (tip > 0) {
-                allItems.push({
-                    description: 'Tip',
-                    price: tip,
-                    is_tax_tip: true,
-                    assignments: []
-                });
-            }
-
-            const itemsTotal = allItems.reduce((sum, item) => sum + item.price, 0);
-
-            payload = {
-                description,
-                amount: itemsTotal,
-                currency,
-                date: expenseDate,
-                payer_id: payerId,
-                payer_is_guest: payerIsGuest,
-                group_id: selectedGroupId,
-                split_type: 'ITEMIZED',
-                items: allItems,
-                splits: [],
-                icon: selectedIcon,
-                receipt_image_path: receiptImagePath,
-                notes: notes
-            };
+            await finalizeItemizedExpense();
+            return;
         }
 
         const result = await offlineExpensesApi.create(payload);
@@ -308,7 +372,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             // Reset state
             resetForm();
         } else {
-            alert(`Failed to add expense`);
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: 'Failed to add expense',
+                type: 'error'
+            });
         }
     };
 
@@ -698,7 +767,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={itemizedExpense.addManualItem}
+                                                onClick={itemizedExpense.openAddItemModal}
                                                 className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-2 min-h-[44px]"
                                             >
                                                 + Add
@@ -790,6 +859,23 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         <button type="submit" className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 min-h-[44px]">Save</button>
                     </div>
                 </form>
+
+                {/* Add Item Modal */}
+                <AddItemModal
+                    isOpen={itemizedExpense.showAddItemModal}
+                    onClose={itemizedExpense.closeAddItemModal}
+                    onAdd={itemizedExpense.addManualItem}
+                />
+
+                {/* Alert Dialog */}
+                <AlertDialog
+                    isOpen={alertDialog.isOpen}
+                    onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+                    onConfirm={alertDialog.onConfirm}
+                    title={alertDialog.title}
+                    message={alertDialog.message}
+                    type={alertDialog.type}
+                />
             </div>
         </div>
     );

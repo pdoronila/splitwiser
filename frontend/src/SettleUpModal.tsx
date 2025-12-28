@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { getApiUrl } from './api';
 import { formatDateForInput } from './utils/formatters';
+import AlertDialog from './components/AlertDialog';
 
 interface Friend {
     id: number;
@@ -24,6 +25,17 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('USD');
     const [currencies] = useState<string[]>(['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'CNY', 'HKD']);
+    const [alertDialog, setAlertDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'alert' | 'confirm' | 'success' | 'error';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'alert'
+    });
 
     // Reset recipient when modal opens with preselected friend
     useEffect(() => {
@@ -83,7 +95,12 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
             onClose();
             setAmount('');
         } else {
-            alert('Failed to settle up');
+            setAlertDialog({
+                isOpen: true,
+                title: 'Error',
+                message: 'Failed to settle up',
+                type: 'error'
+            });
         }
     };
 
@@ -130,6 +147,15 @@ const SettleUpModal: React.FC<SettleUpModalProps> = ({ isOpen, onClose, onSettle
                     </div>
                 </form>
             </div>
+
+            {/* Alert Dialog */}
+            <AlertDialog
+                isOpen={alertDialog.isOpen}
+                onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+                title={alertDialog.title}
+                message={alertDialog.message}
+                type={alertDialog.type}
+            />
         </div>
     );
 };
