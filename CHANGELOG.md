@@ -8,6 +8,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added - 2025-12-28
 
+#### Help & FAQ Page
+- Added comprehensive in-app documentation covering all Splitwiser features
+- Searchable FAQ with 8 major categories covering 35+ topics
+- Collapsible sections with detailed explanations for complex features
+- Special focus on unique features like historical exchange rate caching
+- Explains currency conversion system, expense splitting, guest management, PWA features, and more
+- Accessible via "Help & FAQ" button in sidebar footer
+
+**Frontend Changes:**
+- `frontend/src/HelpPage.tsx` - New comprehensive help page component
+- `frontend/src/App.tsx` - Added `/help` route and sidebar navigation link
+- Search functionality to quickly find relevant topics
+- Organized by feature area: Currency, Expenses, Groups, Balances, PWA, Account, Tips, Dark Mode
+
+**Coverage:**
+- How historical exchange rate caching works and why it matters
+- All 7 supported currencies with flags
+- All 5 split types with detailed explanations
+- Guest claiming and member management workflows
+- Offline/PWA capabilities and limitations
+- Security and authentication details
+- Best practices and tips for organizing expenses
+
 #### Member Management for Registered Users
 - Added ability to manage registered users, similar to guest management
 - Registered users can now have their balances aggregated with another member or guest

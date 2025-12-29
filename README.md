@@ -28,6 +28,7 @@ A full-featured expense splitting application built with FastAPI and React, insp
 - 🔑 **Secure Authentication** - Refresh tokens with server-side revocation
 - 📱 **Progressive Web App** - Install to home screen with offline support
 - 🔌 **Offline Mode** - Create expenses offline, auto-sync when online
+- ❓ **Help & FAQ** - Comprehensive in-app documentation covering all features
 
 ### Split Types
 - ⚖️ **Equal Split** - Divide expense equally among participants
@@ -153,6 +154,7 @@ splitwise/
 │   │   ├── AddGuestModal.tsx        # Add guest users
 │   │   ├── AddMemberModal.tsx       # Add registered members
 │   │   ├── DeleteGroupConfirm.tsx   # Confirmation dialogs
+│   │   ├── HelpPage.tsx             # Help & FAQ documentation
 │   │   ├── services/
 │   │   │   ├── api.ts               # Centralized API client
 │   │   │   ├── offlineApi.ts        # Offline API wrapper
