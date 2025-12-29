@@ -9,6 +9,9 @@ import re
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 
+# Import old parser for fallback (using relative import within ocr package)
+from .parser import parse_receipt_items as parse_receipt_items_v1
+
 
 @dataclass
 class TextBlock:
@@ -627,7 +630,7 @@ def detect_receipt_subtotal(raw_text: str) -> Optional[int]:
 
     # Patterns to match subtotal lines (case-insensitive)
     subtotal_patterns = [
-        r'sub[-\s]?total[:\s]*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})',
+        r'sub[-\s]?total[:\s]*\$?\s*(\d{1,4}(?:,\d{3})*\.\d{2})',
     ]
 
     for pattern in subtotal_patterns:
@@ -659,8 +662,15 @@ def parse_receipt_with_validation(vision_response) -> Dict[str, any]:
     Returns:
         Dict with items and validation info
     """
-    # Parse items using existing function
+    # Parse items using V2 parser first
     items = parse_receipt_items_v2(vision_response)
+
+    # Fallback: if V2 found nothing, try the old line-based parser
+    if not items:
+        items_old = parse_receipt_items_v1(vision_response)
+        if items_old:
+            print(f"[V2 Fallback] V2 found 0 items, using old parser which found {len(items_old)}")
+            items = items_old
 
     # Get raw text for total/tax detection
     raw_text = get_raw_text(vision_response)
