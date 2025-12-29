@@ -306,10 +306,10 @@ export const offlineGroupsApi = {
   /**
    * Update a group - works offline
    */
-  update: async (groupId: number | string, name: string) => {
+  update: async (groupId: number | string, data: { name: string; default_currency?: string; icon?: string | null }) => {
     if (navigator.onLine && typeof groupId === 'number') {
       try {
-        const response = await groupsApi.update(groupId, name);
+        const response = await groupsApi.update(groupId, data);
         if (response.ok) {
           const group = await response.json();
 
@@ -330,14 +330,18 @@ export const offlineGroupsApi = {
     // Offline: Update locally and queue
     const existing = await db.groups.get(groupId);
     if (existing) {
-      const updated = { ...existing, name, cached_at: Date.now() };
+      // Filter out null values for Dexie compatibility
+      const updateData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== null)
+      );
+      const updated = { ...existing, ...updateData, cached_at: Date.now() };
       await db.groups.update(groupId, updated);
 
       await syncManager.queueOperation({
         type: 'UPDATE_GROUP',
         entity_type: 'group',
         entity_id: groupId,
-        payload: { name }
+        payload: data
       });
 
       return { success: true, data: updated, offline: true };
