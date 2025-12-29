@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Splitwiser is a Splitwise clone for expense splitting among friends and groups. It features multi-currency support with historical exchange rate caching, various split types (equal, exact, percentage, shares, itemized), OCR receipt scanning with Google Cloud Vision, group-level currency management, debt simplification, guest user management, dark mode, and refresh token authentication.
+Splitwiser is a Splitwise clone for expense splitting among friends and groups. It features multi-currency support (USD, EUR, GBP, JPY, CAD, CNY, HKD) with historical exchange rate caching, various split types (equal, exact, percentage, shares, itemized), OCR receipt scanning V2 with Google Cloud Vision, group-level currency management, debt simplification, guest and member management with balance aggregation, dark mode, refresh token authentication, Progressive Web App (PWA) with offline support via IndexedDB, and mobile-optimized UI with Web Share API.
 
 ## Architecture
 
@@ -31,15 +31,28 @@ Splitwiser is a Splitwise clone for expense splitting among friends and groups. 
 - `backend/utils/currency.py` - Exchange rate fetching (Frankfurter API), caching
 - `backend/utils/validation.py` - Split validation, participant verification
 - `backend/utils/splits.py` - Split calculation logic (equal, exact, percentage, shares, itemized)
+- `backend/utils/display.py` - Display name helpers for guests and claimed users
 
 **OCR Integration:**
 - `backend/ocr/service.py` - Google Cloud Vision API client (singleton)
-- `backend/ocr/parser.py` - Receipt text parsing and item extraction
+- `backend/ocr/parser.py` - Receipt text parsing and item extraction (V1)
+- `backend/ocr/parser_v2.py` - Enhanced spatial layout parser with improved accuracy
+
+**Database Migrations:**
+- `backend/migrations/` - Migration scripts with helper tools
+- `backend/migrations/migrate.sh` - Helper script for direct installations
+- `backend/migrations/migrate-docker.sh` - Helper script for Docker deployments
+- `backend/migrations/README.md` - Detailed migration documentation
 
 **Key Database Fields:**
 - Group: `default_currency`, `icon`, `share_link_id`, `is_public`
-- Expense: `exchange_rate`, `split_type`, `receipt_image_path`, `icon`, `notes`
+- GroupMember: `managed_by_id`, `managed_by_type` (NEW - for registered user management)
+- Expense: `exchange_rate`, `split_type`, `receipt_image_path`, `icon`, `notes`, `payer_is_guest`
+- ExpenseSplit: `is_guest`
 - GuestMember: `claimed_by_id`, `managed_by_id`, `managed_by_type`
+- RefreshToken: `token_hash`, `expires_at`, `revoked`
+- ExpenseItem: `description`, `price`, `is_tax_tip`
+- ExpenseItemAssignment: `user_id`, `is_guest`
 
 ### Frontend (React + TypeScript + Vite)
 
@@ -53,17 +66,28 @@ Splitwiser is a Splitwise clone for expense splitting among friends and groups. 
 
 **Services & Types:**
 - `frontend/src/services/api.ts` - Centralized API client with auth handling
+- `frontend/src/services/offlineApi.ts` - Offline API wrapper using IndexedDB
+- `frontend/src/services/syncManager.ts` - Background sync manager for PWA
+- `frontend/src/db/schema.ts` - IndexedDB schema for offline storage
 - `frontend/src/types/` - TypeScript definitions (group.ts, expense.ts, balance.ts, friend.ts)
 - `frontend/src/utils/formatters.ts` - Money, date, and name formatting
 - `frontend/src/utils/expenseCalculations.ts` - Frontend split calculations
 - `frontend/src/utils/participantHelpers.ts` - Participant data helpers
 
 **Feature Components:**
-- `frontend/src/ReceiptScanner.tsx` - OCR receipt scanning
+- `frontend/src/ReceiptScanner.tsx` - OCR receipt scanning (V2 parser)
 - `frontend/src/ManageGuestModal.tsx` - Guest management and balance aggregation
-- `frontend/src/AddGuestModal.tsx` - Add non-registered users
+- `frontend/src/ManageMemberModal.tsx` - Member management for registered users (NEW)
+- `frontend/src/AddGuestModal.tsx` - Add non-registered users (mobile-friendly)
+- `frontend/src/AddMemberModal.tsx` - Add registered members
+- `frontend/src/DeleteGroupConfirm.tsx` - Custom confirmation dialogs (replaces browser alerts)
 - `frontend/src/components/expense/ExpenseItemList.tsx` - Itemized expense UI
 - `frontend/src/hooks/useItemizedExpense.ts` - Itemized expense state management
+
+**PWA Support:**
+- `frontend/public/manifest.json` - PWA manifest for installable app
+- `frontend/public/icons/` - App icons (192x192, 512x512, maskable)
+- Service worker for offline caching and background sync
 
 ### Key Patterns
 - Money stored in cents (integer) to avoid floating-point issues
@@ -72,9 +96,15 @@ Splitwiser is a Splitwise clone for expense splitting among friends and groups. 
 - Historical exchange rates cached at expense creation (Frankfurter API)
 - Group-level default currency for expense pre-filling and balance display
 - Guest users support claiming (merge history) and management (balance aggregation)
-- Refresh tokens stored hashed (SHA-256) in database
+- Registered members can also be managed for balance aggregation (NEW)
+- Claimed guests display using registered user's `full_name` via `display.py` helpers
+- Refresh tokens stored hashed (SHA-256) in database with server-side revocation
 - Public share links allow read-only group viewing without login
 - Itemized expenses use proportional tax/tip distribution
+- PWA with IndexedDB for offline expense creation and auto-sync
+- Mobile-optimized with Web Share API and custom dialogs (no browser alerts)
+- Currency flags and recently-used sorting in currency selectors
+- Receipt images stored in `backend/receipts/` directory
 
 ## Development Commands
 
@@ -403,6 +433,79 @@ Non-registered users can participate in expenses and later claim their profiles.
 - `ManageGuestModal.tsx` - UI for linking guests to managers
 - `AddGuestModal.tsx` - Simple form to add guest by name
 - Visual indicators show managed guest relationships in balance view
+
+## Member Management for Registered Users
+
+Similar to guest management, registered users can also be managed for balance aggregation.
+
+### Database Schema
+
+**GroupMember Model Additions:**
+- `managed_by_id` - ID of manager (user or guest, nullable)
+- `managed_by_type` - Type of manager: 'user' or 'guest' (nullable)
+
+### Features
+
+**1. Member Management**
+- Link registered members to a manager (registered user OR guest)
+- Member's balance aggregates with manager's balance in balance view
+- Member still appears separately in expense details
+- Prevents circular management (cannot manage self)
+- Auto-unlink when manager leaves group
+- Endpoints:
+  - `POST /groups/{group_id}/members/{member_id}/manage` - Link to manager
+  - `DELETE /groups/{group_id}/members/{member_id}/manage` - Unlink
+
+**2. Visual Separation**
+- Group Detail Page shows "Splitwisers" section for registered users
+- Separate "Guests" section for non-registered users
+- Clear visual distinction between member types
+
+### Example Use Case
+
+```
+1. Alice and Bob are both registered users in a group
+2. They're a couple and want to see their combined balance
+3. Alice links Bob as managed by her
+4. Balance view now shows "Alice: $100 (Includes: Bob)"
+5. Expense details still show individual transactions
+```
+
+### Frontend Components
+- `ManageMemberModal.tsx` - UI for linking members to managers
+- `GroupDetailPage.tsx` - Section headers distinguish Splitwisers from Guests
+- Visual indicators show managed member relationships in balance view
+
+### Migration Scripts
+- `backend/migrations/add_member_management.py` - Adds columns to group_members table
+- `backend/migrations/migrate.sh` - Helper for direct installations
+- `backend/migrations/migrate-docker.sh` - Helper for Docker deployments
+- See `backend/migrations/README.md` for detailed instructions
+
+## Claimed Guest Display Names
+
+When guests claim their accounts, they should display using their registered user name.
+
+### Implementation
+
+**Helper Functions ([backend/utils/display.py](backend/utils/display.py)):**
+- `get_guest_display_name(guest, db)` - Returns claimed user's `full_name` if applicable, otherwise `guest.name`
+- `get_participant_display_name(user_id, is_guest, db)` - Unified helper for any participant
+
+**Updated Locations:**
+All locations displaying guest names now use these helpers:
+- `backend/routers/auth.py` - Transfer managed_by on claim
+- `backend/routers/balances.py` - Balance breakdown display
+- `backend/routers/groups.py` - 8 locations updated
+- `backend/routers/expenses.py` - 4 locations updated
+- `backend/routers/friends.py` - 2 locations updated
+
+**Migration Scripts:**
+- `backend/migrations/fix_management_after_claim.py` - Fixes existing data where managed_by wasn't transferred
+- `backend/migrations/fix_claimed_guest_management.py` - Guest claiming fixes
+
+**Documentation:**
+- See [BUGFIX_CLAIMED_GUEST_DISPLAY.md](BUGFIX_CLAIMED_GUEST_DISPLAY.md) for detailed technical analysis
 
 ## Public Share Links
 
@@ -764,4 +867,197 @@ ALTER TABLE expenses ADD COLUMN notes TEXT;
 ALTER TABLE groups ADD COLUMN icon TEXT;
 ALTER TABLE groups ADD COLUMN share_link_id TEXT UNIQUE;
 ALTER TABLE groups ADD COLUMN is_public BOOLEAN DEFAULT FALSE;
+
+-- Member management for registered users (NEW)
+ALTER TABLE group_members ADD COLUMN managed_by_id INTEGER;
+ALTER TABLE group_members ADD COLUMN managed_by_type TEXT;
+```
+
+## Progressive Web App (PWA)
+
+Splitwiser is installable as a Progressive Web App with offline support.
+
+### Architecture
+
+**PWA Manifest ([frontend/public/manifest.json](frontend/public/manifest.json)):**
+- App name, description, and theme colors
+- Start URL and display mode (standalone)
+- Icon definitions (192x192, 512x512, maskable)
+- Dark mode theme support
+
+**Service Worker:**
+- Caches static assets for offline use
+- Intercepts network requests
+- Provides fallback for offline scenarios
+- Background sync for pending operations
+
+**IndexedDB Storage ([frontend/src/db/schema.ts](frontend/src/db/schema.ts)):**
+- `expenses` table - Offline expense creation
+- `groups` table - Cached group data
+- `exchange_rates` table - Currency conversion offline
+- `sync_queue` table - Pending operations to sync
+
+### Offline API Wrapper ([frontend/src/services/offlineApi.ts](frontend/src/services/offlineApi.ts))
+
+Wraps standard API calls with offline fallback:
+- Detects online/offline state
+- Stores operations in IndexedDB when offline
+- Returns cached data when offline
+- Queues mutations for later sync
+
+### Sync Manager ([frontend/src/services/syncManager.ts](frontend/src/services/syncManager.ts))
+
+Background sync for pending operations:
+- Monitors online/offline state changes
+- Processes sync queue when connection restored
+- Retries failed operations
+- Handles conflict resolution
+
+### Features
+
+**Offline Capabilities:**
+- Create and edit expenses without internet
+- View cached groups and balances
+- Currency conversion using cached rates
+- Queue operations for automatic sync
+
+**Installation:**
+- Install to home screen on iOS and Android
+- Standalone app experience (no browser chrome)
+- App icon on device home screen
+- Launch like a native app
+
+**Performance:**
+- Fast loading via service worker caching
+- Reduced network requests
+- Instant UI feedback for offline operations
+
+### Usage
+
+**Exchange Rates Caching:**
+```typescript
+// Rates cached in IndexedDB for offline use
+// Refreshed when online or when adding/editing expenses offline
+```
+
+**Offline Expense Creation:**
+```typescript
+// 1. User creates expense while offline
+// 2. Stored in IndexedDB with pending status
+// 3. Added to sync_queue
+// 4. When online, sync manager processes queue
+// 5. Expense created on server
+// 6. Local copy updated with server response
+```
+
+## Mobile-Friendly Features
+
+### Custom Dialogs
+
+Replaced browser `alert()`, `prompt()`, and `confirm()` with custom modals:
+- **AddFriendModal** - Custom friend request dialog
+- **AddGuestModal** - Guest addition with validation
+- **DeleteGroupConfirm** - Confirmation dialogs with proper styling
+- Mobile-responsive with touch-friendly buttons
+
+### iOS Keyboard Fix
+
+Number inputs show numeric keypad on iOS:
+```tsx
+<input
+  type="text"
+  inputMode="decimal"
+  pattern="[0-9]*"
+/>
+```
+
+### Web Share API
+
+Native sharing on mobile devices:
+```typescript
+if (navigator.share) {
+  await navigator.share({
+    title: 'Group Share',
+    url: shareUrl
+  });
+} else {
+  // Fallback to clipboard
+  navigator.clipboard.writeText(shareUrl);
+}
+```
+
+### PWA Theme
+
+iPhone PWA with proper dark mode support:
+- `theme-color` meta tag updates based on theme
+- Maskable icons for Android adaptive icons
+- Splash screen with app branding
+
+## Enhanced Receipt Scanner (OCR V2)
+
+Improved receipt parsing with spatial layout analysis.
+
+### Parser V2 ([backend/ocr/parser_v2.py](backend/ocr/parser_v2.py))
+
+**Improvements:**
+- Spatial layout analysis using bounding boxes
+- Better multi-line item handling
+- Filters false matches (phone numbers, dates, metadata)
+- More accurate price matching
+- Reduced false positives
+
+**Algorithm:**
+1. Extract text with bounding box coordinates from Google Cloud Vision
+2. Group text blocks by vertical position (line grouping)
+3. Match item descriptions with prices on same line
+4. Filter out common false matches:
+   - Phone numbers (pattern: XXX-XXX-XXXX)
+   - Dates (pattern: MM/DD/YYYY)
+   - Total/subtotal lines
+   - Receipt metadata
+5. Return structured items with prices
+
+**Testing:**
+- `backend/ocr/test_parser_comparison.py` - Comparison between V1 and V2 parsers
+- Test cases for complex receipts with multi-line items
+
+### Offline Warning
+
+Receipt scanning unavailable offline:
+- Warning message displayed when offline
+- Scanner disabled in offline mode
+- Requires Google Cloud Vision API (network required)
+
+## Currency Enhancements
+
+### Additional Currencies
+
+Added support for:
+- **CNY** - Chinese Yuan (Renminbi) 🇨🇳
+- **HKD** - Hong Kong Dollar 🇭🇰
+
+**Backend Changes:**
+- `backend/schemas.py` - Updated currency validation
+- Exchange rate fetching includes CNY and HKD
+
+### Currency Flags
+
+Visual currency selector with flag emojis:
+- USD 🇺🇸, EUR 🇪🇺, GBP 🇬🇧, JPY 🇯🇵, CAD 🇨🇦, CNY 🇨🇳, HKD 🇭🇰
+- Improves UX and visual recognition
+- Consistent across all currency selectors
+
+### Recently-Used Sorting
+
+Currency selectors show recently-used currencies first:
+- Stored in localStorage
+- Top 3 recent currencies sorted to top
+- Faster selection for frequently-used currencies
+
+**Implementation:**
+```typescript
+// Save currency usage
+const recentCurrencies = JSON.parse(localStorage.getItem('recentCurrencies') || '[]');
+recentCurrencies.unshift(selectedCurrency);
+localStorage.setItem('recentCurrencies', JSON.stringify(recentCurrencies.slice(0, 3)));
 ```

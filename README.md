@@ -13,17 +13,21 @@ A full-featured expense splitting application built with FastAPI and React, insp
 - 🔄 **Debt Simplification** - Minimize transactions using graph algorithms
 
 ### Advanced Features
-- 💱 **Multi-Currency Support** - Support for USD, EUR, GBP, JPY, CAD
+- 💱 **Multi-Currency Support** - Support for USD, EUR, GBP, JPY, CAD, CNY, HKD with currency flags
 - 📅 **Historical Exchange Rates** - Automatic caching of exchange rates from expense date
 - 🌍 **Live Currency Conversion** - Real-time exchange rates via Frankfurter API
 - 🎯 **Smart Currency Grouping** - View balances grouped by currency or converted to group default
-- 📸 **OCR Receipt Scanning** - Extract expense details from receipt photos using Google Cloud Vision API
+- 📸 **OCR Receipt Scanning V2** - Enhanced receipt parsing with Google Cloud Vision API
 - 👻 **Guest Members** - Add non-registered users with claiming and balance aggregation
+- 👥 **Member Management** - Balance aggregation for registered users, not just guests
 - 🔗 **Public Share Links** - Share read-only group views without requiring login
 - 📝 **Notes on Expenses** - Add freeform text notes to expense entries
+- 🖼️ **Receipt Images** - Attach and view receipt photos on expenses
 - 🏷️ **Icons/Categories** - Emoji icons for groups and expense categorization
 - 🌙 **Dark Mode** - System-wide dark theme with preference persistence
 - 🔑 **Secure Authentication** - Refresh tokens with server-side revocation
+- 📱 **Progressive Web App** - Install to home screen with offline support
+- 🔌 **Offline Mode** - Create expenses offline, auto-sync when online
 
 ### Split Types
 - ⚖️ **Equal Split** - Divide expense equally among participants
@@ -119,10 +123,17 @@ splitwise/
 │   ├── utils/                       # Utility modules
 │   │   ├── currency.py              # Exchange rate handling
 │   │   ├── validation.py            # Input validation helpers
-│   │   └── splits.py                # Split calculation logic
+│   │   ├── splits.py                # Split calculation logic
+│   │   └── display.py               # Display name helpers
 │   ├── ocr/                         # OCR integration
 │   │   ├── service.py               # Google Cloud Vision client
-│   │   └── parser.py                # Receipt text parsing
+│   │   ├── parser.py                # Receipt text parsing (V1)
+│   │   └── parser_v2.py             # Enhanced spatial layout parser
+│   ├── migrations/                  # Database migration scripts
+│   │   ├── README.md                # Migration documentation
+│   │   ├── migrate.sh               # Migration helper (direct install)
+│   │   ├── migrate-docker.sh        # Migration helper (Docker)
+│   │   └── *.py                     # Individual migration scripts
 │   ├── requirements.txt             # Python dependencies
 │   └── db.sqlite3                   # SQLite database (generated)
 │
@@ -138,9 +149,16 @@ splitwise/
 │   │   ├── SettleUpModal.tsx        # Settlement UI
 │   │   ├── ReceiptScanner.tsx       # OCR receipt scanning
 │   │   ├── ManageGuestModal.tsx     # Guest management UI
+│   │   ├── ManageMemberModal.tsx    # Member management UI
 │   │   ├── AddGuestModal.tsx        # Add guest users
+│   │   ├── AddMemberModal.tsx       # Add registered members
+│   │   ├── DeleteGroupConfirm.tsx   # Confirmation dialogs
 │   │   ├── services/
-│   │   │   └── api.ts               # Centralized API client
+│   │   │   ├── api.ts               # Centralized API client
+│   │   │   ├── offlineApi.ts        # Offline API wrapper
+│   │   │   └── syncManager.ts       # Background sync manager
+│   │   ├── db/
+│   │   │   └── schema.ts            # IndexedDB schema for offline
 │   │   ├── types/                   # TypeScript type definitions
 │   │   │   ├── group.ts
 │   │   │   ├── expense.ts
@@ -155,6 +173,9 @@ splitwise/
 │   │   │       └── ExpenseItemList.tsx  # Itemized expense UI
 │   │   └── hooks/
 │   │       └── useItemizedExpense.ts    # Itemized expense logic
+│   ├── public/
+│   │   ├── manifest.json            # PWA manifest
+│   │   └── icons/                   # App icons (various sizes)
 │   ├── package.json                 # npm dependencies
 │   └── vite.config.ts               # Vite configuration
 │
@@ -185,17 +206,25 @@ Two viewing modes:
 
 ## Key Features
 
-### Guest User Management
+### Guest & Member Management
 
-Add non-registered users to groups for expense tracking:
+Add and manage both registered and non-registered users:
 
+**Guest Management:**
 - **Add Guests** - Invite people without requiring registration
 - **Guest Participation** - Guests can be payers or participants in expenses
 - **Claim Profiles** - Registered users can claim guest accounts to merge expense history
 - **Balance Aggregation** - Link guests to managers for simplified balance tracking
 - **Automatic Migration** - When claiming, all guest expenses transfer to registered account
+- **Guest-to-Guest Management** - Guests can manage other guests
 
-**Use Case:** Add "Bob's Friend" to a trip group. Later, when they register, they can claim the guest profile and inherit all expense history.
+**Member Management (NEW):**
+- **Registered User Aggregation** - Link registered members for combined balance view
+- **Consistent Interface** - Same management flow for both guests and members
+- **Visual Separation** - "Splitwisers" and "Guests" sections in group view
+- **Flexible Tracking** - Aggregate balances for couples, families, or shared accounts
+
+**Use Case:** Add "Bob's Friend" to a trip group. Later, when they register, they can claim the guest profile and inherit all expense history. Or link two registered users (e.g., a couple) to see their combined balance.
 
 ### Itemized Expense Splitting
 
@@ -229,6 +258,31 @@ System-wide dark theme:
 - **Smooth Transitions** - Animated color changes for better UX
 - **Full Coverage** - All 20+ components support dark mode
 - **Easy Toggle** - One-click switch in sidebar
+
+### Progressive Web App (PWA)
+
+Install and use offline:
+
+- **Installable** - Add to home screen on iOS and Android
+- **Offline Support** - Create and edit expenses without internet connection
+- **Background Sync** - Automatically syncs changes when connection restored
+- **IndexedDB Storage** - Local database for offline data persistence
+- **Cached Exchange Rates** - Currency conversion works offline
+- **Service Worker** - Fast loading and offline asset caching
+- **App Icons** - Custom icons including maskable icons for Android
+
+**Use Case:** Create expenses on a flight or in areas with poor connectivity. Everything syncs automatically when you're back online.
+
+### Mobile-Optimized Experience
+
+Native-like experience on mobile devices:
+
+- **Custom Modals** - No browser `alert()` or `prompt()` dialogs
+- **iOS Keyboard** - Numeric keypad for amount inputs
+- **Web Share API** - Native sharing on mobile for group links
+- **Responsive Design** - Optimized for small screens
+- **Touch-Friendly** - Large tap targets and gesture support
+- **Dark Mode PWA** - Themed splash screen and UI on iPhone
 
 ## Development
 
