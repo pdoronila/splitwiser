@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2025-12-29
+
+#### Mark as Paid Feature in Simplify Debts Modal
+- Added "Mark as Paid" button to each simplified transaction
+- Clicking the button creates a payment expense that settles the debt
+- Payment expenses automatically created with:
+  - Title: "Payment (Payer → Payee)"
+  - Icon: 🏦 (bank emoji)
+  - Date: Today's date
+  - Amount: Exact amount from simplified debt
+  - Note: "Created by Simplify Debts"
+- Transaction is removed from simplified debts list after payment is created
+- Balances and expenses automatically refresh after payment
+- Provides seamless flow from debt simplification to settlement
+
+**Frontend Changes:**
+- `frontend/src/SimplifyDebtsModal.tsx` - Added payment creation functionality
+  - New `handleMarkAsPaid()` function to create settlement expenses
+  - "Mark as Paid" button for each transaction with loading state
+  - Optimistic UI updates (removes transaction after successful payment)
+- `frontend/src/GroupDetailPage.tsx` - Added `onPaymentCreated` callback to refresh data
+
+**User Experience:**
+- Users can now settle debts directly from the Simplify Debts modal
+- No need to manually create payment expenses
+- Clear audit trail with payment expenses in the expense list
+- Icon and note make it easy to identify settlement payments
+
 ### Fixed - 2025-12-29
 
 #### Debt Simplification Now Respects Management Relationships

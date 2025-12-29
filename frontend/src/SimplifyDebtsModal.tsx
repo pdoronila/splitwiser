@@ -17,6 +17,7 @@ interface SimplifyDebtsModalProps {
   groupId: number;
   members: Array<{ id: number; user_id: number; full_name: string }>;
   guests: Array<{ id: number; name: string }>;
+  onPaymentCreated?: () => void; // Callback to refresh balances after payment
 }
 
 const SimplifyDebtsModal: React.FC<SimplifyDebtsModalProps> = ({
@@ -25,10 +26,12 @@ const SimplifyDebtsModal: React.FC<SimplifyDebtsModalProps> = ({
   groupId,
   members,
   guests,
+  onPaymentCreated,
 }) => {
   const [transactions, setTransactions] = useState<SimplifiedTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processingPaymentIndex, setProcessingPaymentIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +60,49 @@ const SimplifyDebtsModal: React.FC<SimplifyDebtsModalProps> = ({
     } else {
       const member = members.find(m => m.user_id === userId);
       return member ? member.full_name : `User ${userId}`;
+    }
+  };
+
+  const handleMarkAsPaid = async (transaction: SimplifiedTransaction, index: number) => {
+    setProcessingPaymentIndex(index);
+    try {
+      const payerName = getParticipantName(transaction.from_id, transaction.from_is_guest);
+      const payeeName = getParticipantName(transaction.to_id, transaction.to_is_guest);
+      const today = new Date().toISOString().split('T')[0];
+
+      // Create expense where payer is the person who owes money
+      // and the only participant is the person who is owed money
+      await api.expenses.create({
+        description: `Payment (${payerName} → ${payeeName})`,
+        amount: Math.round(transaction.amount), // Convert to cents
+        currency: transaction.currency,
+        date: today,
+        group_id: groupId,
+        payer_id: transaction.from_id,
+        payer_is_guest: transaction.from_is_guest,
+        split_type: 'EQUAL',
+        icon: '🏦',
+        notes: 'Created by Simplify Debts',
+        participants: [
+          {
+            user_id: transaction.to_id,
+            is_guest: transaction.to_is_guest,
+          },
+        ],
+      });
+
+      // Remove this transaction from the list
+      setTransactions(prev => prev.filter((_, i) => i !== index));
+
+      // Notify parent to refresh balances
+      if (onPaymentCreated) {
+        onPaymentCreated();
+      }
+    } catch (err) {
+      console.error('Failed to create payment expense:', err);
+      setError('Failed to mark payment as paid. Please try again.');
+    } finally {
+      setProcessingPaymentIndex(null);
     }
   };
 
@@ -145,7 +191,7 @@ const SimplifyDebtsModal: React.FC<SimplifyDebtsModalProps> = ({
                     key={index}
                     className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-teal-400 dark:hover:border-teal-500 transition-colors"
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-4 mb-3">
                       {/* From Person */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -185,6 +231,29 @@ const SimplifyDebtsModal: React.FC<SimplifyDebtsModalProps> = ({
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Mark as Paid Button */}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleMarkAsPaid(transaction, index)}
+                        disabled={processingPaymentIndex === index}
+                        className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {processingPaymentIndex === index ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Mark as Paid</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 ))}

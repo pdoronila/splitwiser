@@ -1204,6 +1204,10 @@ const GroupDetailPage: React.FC = () => {
                     groupId={parseInt(groupId || '0')}
                     members={group.members}
                     guests={group.guests}
+                    onPaymentCreated={() => {
+                        // Refresh balances and expenses after payment is created
+                        fetchGroupData();
+                    }}
                 />
             )}
         </div>
