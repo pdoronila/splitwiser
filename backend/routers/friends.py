@@ -11,6 +11,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user
 from utils.validation import get_user_by_email
+from utils.display import get_guest_display_name
 
 
 router = APIRouter(prefix="/friends", tags=["friends"])
@@ -155,7 +156,7 @@ def get_friend_expenses(
         for split in splits:
             if split.is_guest:
                 guest = db.query(models.GuestMember).filter(models.GuestMember.id == split.user_id).first()
-                user_name = guest.name if guest else "Unknown Guest"
+                user_name = get_guest_display_name(guest, db)
             else:
                 user = db.query(models.User).filter(models.User.id == split.user_id).first()
                 user_name = (user.full_name or user.email) if user else "Unknown User"
@@ -196,7 +197,7 @@ def get_friend_expenses(
                         guest = db.query(models.GuestMember).filter(
                             models.GuestMember.id == a.user_id
                         ).first()
-                        name = guest.name if guest else "Unknown Guest"
+                        name = get_guest_display_name(guest, db)
                     else:
                         user = db.query(models.User).filter(
                             models.User.id == a.user_id

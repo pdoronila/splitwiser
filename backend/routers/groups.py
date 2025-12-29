@@ -9,6 +9,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user
 from utils.validation import get_group_or_404, verify_group_membership, verify_group_ownership
+from utils.display import get_guest_display_name
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -77,7 +78,7 @@ def get_group(
             elif gm.managed_by_type == 'guest':
                 manager_guest = db.query(models.GuestMember).filter(models.GuestMember.id == gm.managed_by_id).first()
                 if manager_guest:
-                    managed_by_name = manager_guest.name
+                    managed_by_name = get_guest_display_name(manager_guest, db)
 
         members.append(schemas.GroupMember(
             id=gm.id,
@@ -233,7 +234,7 @@ def get_public_group(
             elif gm.managed_by_type == 'guest':
                 manager_guest = db.query(models.GuestMember).filter(models.GuestMember.id == gm.managed_by_id).first()
                 if manager_guest:
-                    managed_by_name = manager_guest.name
+                    managed_by_name = get_guest_display_name(manager_guest, db)
 
         members.append(schemas.GroupMember(
             id=gm.id,
@@ -316,7 +317,7 @@ def get_public_group_expenses(
         for split in splits:
             if split.is_guest:
                 guest = db.query(models.GuestMember).filter(models.GuestMember.id == split.user_id).first()
-                user_name = guest.name if guest else "Unknown Guest"
+                user_name = get_guest_display_name(guest, db)
             else:
                 user = db.query(models.User).filter(models.User.id == split.user_id).first()
                 user_name = (user.full_name or user.email) if user else "Unknown User"
@@ -350,7 +351,7 @@ def get_public_group_expenses(
                         guest = db.query(models.GuestMember).filter(
                             models.GuestMember.id == a.user_id
                         ).first()
-                        name = guest.name if guest else "Unknown Guest"
+                        name = get_guest_display_name(guest, db)
                     else:
                         user = db.query(models.User).filter(
                             models.User.id == a.user_id
@@ -471,10 +472,13 @@ def get_public_group_balances(
 
                 net_balances[manager_key][currency] += amount
 
+                # Get the display name - use User's full_name if claimed, otherwise guest name
+                display_name = get_guest_display_name(guest, db)
+
                 breakdown_key = (guest.managed_by_id, manager_is_guest, currency)
                 if breakdown_key not in manager_guest_breakdown:
                     manager_guest_breakdown[breakdown_key] = []
-                manager_guest_breakdown[breakdown_key].append((guest.name, amount))
+                manager_guest_breakdown[breakdown_key].append((display_name, amount))
 
             del net_balances[guest_key]
 
@@ -512,7 +516,7 @@ def get_public_group_balances(
     for (participant_id, is_guest), currencies in net_balances.items():
         if is_guest:
             guest = db.query(models.GuestMember).filter(models.GuestMember.id == participant_id).first()
-            name = guest.name if guest else "Unknown Guest"
+            name = get_guest_display_name(guest, db)
         else:
             user = db.query(models.User).filter(models.User.id == participant_id).first()
             name = (user.full_name or user.email) if user else "Unknown User"

@@ -12,6 +12,7 @@ from dependencies import get_current_user
 from utils.validation import get_group_or_404, verify_group_membership, validate_expense_participants
 from utils.splits import calculate_itemized_splits
 from utils.currency import get_exchange_rate_for_expense
+from utils.display import get_guest_display_name
 
 
 # Receipt directory path (must match main.py)
@@ -220,7 +221,7 @@ def get_expense(
                     guest = db.query(models.GuestMember).filter(
                         models.GuestMember.id == a.user_id
                     ).first()
-                    name = guest.name if guest else "Unknown Guest"
+                    name = get_guest_display_name(guest, db)
                 else:
                     user = db.query(models.User).filter(
                         models.User.id == a.user_id
@@ -465,7 +466,7 @@ def get_group_expenses(
         for split in splits:
             if split.is_guest:
                 guest = db.query(models.GuestMember).filter(models.GuestMember.id == split.user_id).first()
-                user_name = guest.name if guest else "Unknown Guest"
+                user_name = get_guest_display_name(guest, db)
             else:
                 user = db.query(models.User).filter(models.User.id == split.user_id).first()
                 user_name = (user.full_name or user.email) if user else "Unknown User"

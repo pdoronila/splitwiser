@@ -9,9 +9,10 @@ import schemas
 from database import get_db
 from dependencies import get_current_user
 from utils.validation import get_group_or_404, verify_group_membership
+from utils.display import get_guest_display_name
 from utils.currency import (
-    format_currency, 
-    convert_to_usd, 
+    format_currency,
+    convert_to_usd,
     get_current_exchange_rates,
     EXCHANGE_RATES
 )
@@ -94,11 +95,7 @@ def get_group_balances(
                 net_balances[manager_key][currency] += amount
 
                 # Get the display name - use User's full_name if claimed, otherwise guest name
-                if guest.claimed_by_id:
-                    claimed_user = db.query(models.User).filter(models.User.id == guest.claimed_by_id).first()
-                    display_name = (claimed_user.full_name or claimed_user.email) if claimed_user else guest.name
-                else:
-                    display_name = guest.name
+                display_name = get_guest_display_name(guest, db)
 
                 breakdown_key = (guest.managed_by_id, manager_is_guest, currency)
                 if breakdown_key not in manager_guest_breakdown:
