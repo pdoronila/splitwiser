@@ -2,6 +2,36 @@
 
 This directory contains database migration scripts for Splitwiser.
 
+## Quick Start
+
+### For Docker Deployments
+
+```bash
+cd backend
+./migrations/migrate-docker.sh
+```
+
+The script will:
+- Auto-detect your container
+- Create a backup
+- Show you what will change (dry-run)
+- Ask for confirmation
+- Apply the migration
+- Show next steps
+
+### For Direct Installations
+
+```bash
+cd backend
+./migrations/migrate.sh
+```
+
+See detailed guides:
+- [Docker Migration Guide](DOCKER_MIGRATION_GUIDE.md)
+- [Production Guide](PRODUCTION_GUIDE.md)
+
+---
+
 ## Migration: Add Member Management
 
 **File:** `add_member_management.py`
