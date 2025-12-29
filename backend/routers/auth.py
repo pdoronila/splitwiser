@@ -65,6 +65,26 @@ def register_user(
                     ).first()
                     if not member:
                         db_member = models.GroupMember(group_id=group.id, user_id=db_user.id)
+
+                        # Transfer the guest's managed_by relationship to the new member
+                        if guest.managed_by_id and guest.managed_by_type == 'guest':
+                            # Check if the manager guest was also claimed
+                            manager_guest = db.query(models.GuestMember).filter(
+                                models.GuestMember.id == guest.managed_by_id
+                            ).first()
+                            if manager_guest and manager_guest.claimed_by_id:
+                                # Manager guest was claimed, update to point to the user who claimed it
+                                db_member.managed_by_id = manager_guest.claimed_by_id
+                                db_member.managed_by_type = 'user'
+                            else:
+                                # Manager guest not claimed yet, keep the guest reference
+                                db_member.managed_by_id = guest.managed_by_id
+                                db_member.managed_by_type = 'guest'
+                        elif guest.managed_by_id and guest.managed_by_type == 'user':
+                            # Already managed by a user, preserve that relationship
+                            db_member.managed_by_id = guest.managed_by_id
+                            db_member.managed_by_type = 'user'
+
                         db.add(db_member)
                         claimed_group_id = group.id
 
