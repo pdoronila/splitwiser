@@ -13,7 +13,7 @@ export const getApiUrl = (path: string): string => {
 
 // Create a fetch wrapper with automatic token refresh
 export const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
-    let token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
 
     // Add authorization header if token exists
     const headers = {
