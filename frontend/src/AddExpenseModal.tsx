@@ -235,7 +235,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             splits = result.splits;
         }
 
-        let payload: any = {
+        const payload: any = {
             description,
             amount: totalAmountCents,
             currency,
