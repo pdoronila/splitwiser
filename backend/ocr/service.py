@@ -2,8 +2,30 @@ from google.cloud import vision
 from google.api_core import exceptions as google_exceptions
 import google.auth.exceptions
 import logging
+import os
+import base64
+import tempfile
 
 logger = logging.getLogger(__name__)
+
+# Handle GOOGLE_CREDENTIALS_BASE64 for Fly.io deployments
+def _setup_google_credentials():
+    """Decode base64 credentials and set up GOOGLE_APPLICATION_CREDENTIALS."""
+    base64_creds = os.environ.get("GOOGLE_CREDENTIALS_BASE64")
+    if base64_creds and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        try:
+            # Decode the base64 credentials
+            creds_json = base64.b64decode(base64_creds).decode("utf-8")
+            # Write to a temp file that persists for the process lifetime
+            creds_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+            creds_file.write(creds_json)
+            creds_file.close()
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file.name
+            logger.info("Google Cloud credentials loaded from GOOGLE_CREDENTIALS_BASE64")
+        except Exception as e:
+            logger.warning(f"Failed to decode GOOGLE_CREDENTIALS_BASE64: {e}")
+
+_setup_google_credentials()
 
 class OCRService:
     """
