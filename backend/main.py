@@ -6,7 +6,7 @@ This module sets up the app and mounts routers - all endpoint logic is in router
 """
 
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -34,6 +34,16 @@ app = FastAPI(
 
 # Mount static files for receipts
 app.mount("/static/receipts", StaticFiles(directory=RECEIPT_DIR), name="receipts")
+
+# Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # CORS middleware
 app.add_middleware(
