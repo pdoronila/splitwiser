@@ -2,8 +2,9 @@
 
 from typing import Annotated
 import os
-import shutil
 import uuid
+import io
+from PIL import Image, UnidentifiedImageError
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 
@@ -47,23 +48,44 @@ async def scan_receipt(
         )
 
     try:
+        # Read image file
+        image_content = await file.read()
+
+        # Security: Verify image content and determine extension
+        try:
+            with Image.open(io.BytesIO(image_content)) as img:
+                img.verify()  # Verify integrity
+                format_ext_map = {
+                    "JPEG": "jpg",
+                    "PNG": "png",
+                    "WEBP": "webp"
+                }
+                if img.format not in format_ext_map:
+                    # Fallback or strict check
+                    if img.format == "MPO": # Multi-Picture Object often used by camera phones, similar to JPEG
+                        file_ext = "jpg"
+                    else:
+                        # Re-open to check if we can save it as one of our supported types or if it's just something else
+                        # But img.verify() destroys the object partially.
+                        # Simple approach: if not in map, default to safe extension if content-type matches, or fail.
+                        # For now, let's trust the mapped formats.
+                         raise HTTPException(status_code=400, detail=f"Unsupported image format: {img.format}")
+                else:
+                    file_ext = format_ext_map[img.format]
+        except (UnidentifiedImageError, Exception) as e:
+            print(f"Image verification failed: {e}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+
         # Ensure receipts directory exists
         os.makedirs(RECEIPT_DIR, exist_ok=True)
 
-        # Generate unique filename
-        file_ext = file.filename.split('.')[-1] if '.' in file.filename else "jpg"
+        # Generate unique filename with safe extension
         filename = f"{uuid.uuid4()}.{file_ext}"
         file_path = os.path.join(RECEIPT_DIR, filename)
 
         # Save file locally
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Reset file cursor for reading
-        file.file.seek(0)
-
-        # Read image file for OCR
-        image_content = await file.read()
+            buffer.write(image_content)
         print(f"Starting receipt scan... Image size: {len(image_content)} bytes")
         
         # OCR processing
