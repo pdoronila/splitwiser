@@ -7,3 +7,7 @@
 **Vulnerability:** The receipt scanning endpoint read the entire uploaded file into memory without checking its size, creating a Denial of Service (DoS) risk via memory exhaustion.
 **Learning:** Frameworks like FastAPI/Starlette provide tools (`UploadFile`) that handle large files by spooling to disk, but application logic often inadvertently negates this by calling `await file.read()`, loading everything into RAM.
 **Prevention:** Always enforce a `Content-Length` header check before reading, and/or stream the file reading with a size limit check. Added a 10MB limit to `scan_receipt`.
+## 2025-02-18 - Input Validation Vulnerability
+**Vulnerability:** Input fields in schemas (like user full_name, expense description, etc.) lacked length constraints, allowing for potentially unbounded strings which could lead to DoS or database issues.
+**Learning:** Pydantic models by default validate types but not lengths. Explicit `Field(..., max_length=X)` is required.
+**Prevention:** Always define `min_length` and `max_length` for string fields in Pydantic schemas. Use `EmailStr` for emails.

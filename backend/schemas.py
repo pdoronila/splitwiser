@@ -1,12 +1,12 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from typing import Optional
 
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=100)
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8, max_length=128)
     claim_guest_id: Optional[int] = None
     share_link_id: Optional[str] = None
 
@@ -30,7 +30,7 @@ class ItemAssignment(BaseModel):
     is_guest: bool = False
 
 class ExpenseItemCreate(BaseModel):
-    description: str
+    description: str = Field(..., max_length=200)
     price: int  # In cents
     is_tax_tip: bool = False
     assignments: list[ItemAssignment] = []
@@ -52,9 +52,9 @@ class ExpenseItemDetail(BaseModel):
         from_attributes = True
 
 class ExpenseCreate(BaseModel):
-    description: str
+    description: str = Field(..., max_length=200)
     amount: int
-    currency: str = "USD"
+    currency: str = Field("USD", min_length=3, max_length=3)
     date: str
     payer_id: int
     payer_is_guest: bool = False
@@ -62,10 +62,9 @@ class ExpenseCreate(BaseModel):
     splits: list[ExpenseSplitBase]
     split_type: str  # EQUAL, EXACT, PERCENT, SHARES, ITEMIZED
     items: Optional[list[ExpenseItemCreate]] = None  # Only for ITEMIZED type
-    icon: Optional[str] = None  # Optional emoji icon
-    icon: Optional[str] = None  # Optional emoji icon
+    icon: Optional[str] = Field(None, max_length=10)  # Optional emoji icon
     receipt_image_path: Optional[str] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=1000)
 
 class Expense(BaseModel):
     id: int
@@ -77,7 +76,6 @@ class Expense(BaseModel):
     payer_is_guest: bool = False
     group_id: Optional[int]
     created_by_id: Optional[int] = None
-    icon: Optional[str] = None
     icon: Optional[str] = None
     receipt_image_path: Optional[str] = None
     notes: Optional[str] = None
@@ -104,19 +102,18 @@ class ExpenseWithSplits(Expense):
     items: list[ExpenseItemDetail] = []  # Only populated for ITEMIZED type
 
 class ExpenseUpdate(BaseModel):
-    description: str
+    description: str = Field(..., max_length=200)
     amount: int
-    currency: str = "USD"
+    currency: str = Field("USD", min_length=3, max_length=3)
     date: str
     payer_id: int
     payer_is_guest: bool = False
     splits: list[ExpenseSplitBase]
     split_type: str  # EQUAL, EXACT, PERCENT, SHARES, ITEMIZED
     items: Optional[list[ExpenseItemCreate]] = None  # Only for ITEMIZED type
-    icon: Optional[str] = None  # Optional emoji icon
-    icon: Optional[str] = None  # Optional emoji icon
+    icon: Optional[str] = Field(None, max_length=10)  # Optional emoji icon
     receipt_image_path: Optional[str] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=1000)
 
 class Token(BaseModel):
     access_token: str
@@ -128,9 +125,9 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 class GroupBase(BaseModel):
-    name: str
-    default_currency: str = "USD"
-    icon: Optional[str] = None
+    name: str = Field(..., max_length=100)
+    default_currency: str = Field("USD", min_length=3, max_length=3)
+    icon: Optional[str] = Field(None, max_length=10)
 
     @field_validator('default_currency')
     @classmethod
@@ -153,7 +150,7 @@ class Group(GroupBase):
         from_attributes = True
 
 class FriendRequest(BaseModel):
-    email: str
+    email: EmailStr
 
 class Friend(BaseModel):
     id: int
@@ -164,7 +161,7 @@ class Friend(BaseModel):
         from_attributes = True
 
 class GroupMemberAdd(BaseModel):
-    email: str
+    email: EmailStr
 
 class GroupMember(BaseModel):
     id: int
@@ -179,7 +176,7 @@ class GroupMember(BaseModel):
         from_attributes = True
 
 class GuestMemberCreate(BaseModel):
-    name: str
+    name: str = Field(..., max_length=100)
 
 class GuestMember(BaseModel):
     id: int
@@ -195,9 +192,9 @@ class GuestMember(BaseModel):
         from_attributes = True
 
 class GroupUpdate(BaseModel):
-    name: str
-    default_currency: str = "USD"
-    icon: Optional[str] = None
+    name: str = Field(..., max_length=100)
+    default_currency: str = Field("USD", min_length=3, max_length=3)
+    icon: Optional[str] = Field(None, max_length=10)
 
     @field_validator('default_currency')
     @classmethod
