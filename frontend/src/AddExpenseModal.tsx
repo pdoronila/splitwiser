@@ -604,8 +604,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                         {groups.length > 0 && (
                             <div className="mb-4">
-                                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Group (optional):</label>
+                                <label htmlFor="group-select" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Group (optional):</label>
                                 <select
+                                    id="group-select"
                                     value={selectedGroupId || ''}
                                     onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
                                     className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-white dark:bg-gray-700 dark:text-gray-100"
@@ -619,13 +620,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         )}
 
                         <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Description:</label>
+                            <label htmlFor="description-input" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Description:</label>
                             <div className="flex items-center gap-2">
                                 <IconSelector
                                     selectedIcon={selectedIcon}
                                     onIconSelect={setSelectedIcon}
                                 />
                                 <input
+                                    id="description-input"
                                     type="text"
                                     placeholder="Enter a description"
                                     className="flex-1 border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
@@ -638,6 +640,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                         <div className="mb-4 flex items-center space-x-2">
                             <select
+                                aria-label="Currency"
                                 value={currency}
                                 onChange={(e) => setCurrency(e.target.value)}
                                 className="border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 bg-transparent text-gray-700 dark:text-gray-200 dark:bg-gray-700"
@@ -649,6 +652,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                                 ))}
                             </select>
                             <input
+                                aria-label="Amount"
                                 type="text"
                                 inputMode="decimal"
                                 placeholder="0.00"
@@ -661,8 +665,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
+                            <label htmlFor="date-input" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date:</label>
                             <input
+                                id="date-input"
                                 type="date"
                                 className="w-full border-b border-gray-300 dark:border-gray-600 py-2 focus:outline-none focus:border-teal-500 dark:bg-gray-800 dark:text-gray-100"
                                 value={expenseDate}
@@ -672,8 +677,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Notes:</label>
+                            <label htmlFor="notes-input" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Notes:</label>
                             <textarea
+                                id="notes-input"
                                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                                 placeholder="Add notes (optional)"
                                 rows={2}
@@ -745,8 +751,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                         {getPotentialPayers().length > 1 && (
                             <div className="mb-4">
-                                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Paid by:</label>
+                                <label htmlFor="payer-select" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Paid by:</label>
                                 <select
+                                    id="payer-select"
                                     value={payerIsGuest ? `guest_${payerId}` : `user_${payerId}`}
                                     onChange={(e) => {
                                         const [type, id] = e.target.value.split('_');
