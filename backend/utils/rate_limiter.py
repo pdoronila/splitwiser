@@ -55,3 +55,12 @@ auth_rate_limiter = RateLimiter(requests_limit=5, time_window=60)
 
 # 5 requests per minute for expensive OCR operations
 ocr_rate_limiter = RateLimiter(requests_limit=5, time_window=60)
+
+# 3 requests per hour for password reset (prevent abuse)
+password_reset_rate_limiter = RateLimiter(requests_limit=3, time_window=3600)
+
+# 3 requests per hour for email verification (prevent spam)
+email_verification_rate_limiter = RateLimiter(requests_limit=3, time_window=3600)
+
+# 5 requests per minute for profile updates (prevent spam)
+profile_update_rate_limiter = RateLimiter(requests_limit=5, time_window=60)

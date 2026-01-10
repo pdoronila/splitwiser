@@ -10,6 +10,9 @@ class User(Base):
     hashed_password = Column(String)
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
+    password_changed_at = Column(DateTime, nullable=True)
+    email_verified = Column(Boolean, default=False)
+    last_login_at = Column(DateTime, nullable=True)
 
 class Group(Base):
     __tablename__ = "groups"
@@ -106,4 +109,25 @@ class RefreshToken(Base):
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     revoked = Column(Boolean, default=False)
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    token_hash = Column(String, unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used = Column(Boolean, default=False, nullable=False)
+
+class EmailVerificationToken(Base):
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    new_email = Column(String, nullable=False)
+    token_hash = Column(String, unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used = Column(Boolean, default=False, nullable=False)
 

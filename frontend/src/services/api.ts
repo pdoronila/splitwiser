@@ -395,6 +395,78 @@ export const receiptsApi = {
     },
 };
 
+// ============================================================================
+// Profile Management API
+// ============================================================================
+
+export const profileApi = {
+    getProfile: async () => {
+        const response = await apiFetch('/users/me/profile');
+        if (!response.ok) throw new Error('Failed to fetch profile');
+        return response.json();
+    },
+
+    updateProfile: async (data: { full_name?: string; email?: string }) => {
+        const response = await apiFetch('/users/me/profile', {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error('Failed to update profile');
+        return response.json();
+    },
+
+    changePassword: async (currentPassword: string, newPassword: string) => {
+        const response = await apiFetch('/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword,
+            }),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to change password');
+        }
+        return response.json();
+    },
+
+    forgotPassword: async (email: string) => {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!response.ok) throw new Error('Failed to send password reset email');
+        return response.json();
+    },
+
+    resetPassword: async (token: string, newPassword: string) => {
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, new_password: newPassword }),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to reset password');
+        }
+        return response.json();
+    },
+
+    verifyEmail: async (token: string) => {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to verify email');
+        }
+        return response.json();
+    },
+};
+
 // Export a consolidated API object
 export const api = {
     auth: authApi,
@@ -403,6 +475,7 @@ export const api = {
     expenses: expensesApi,
     balances: balancesApi,
     receipts: receiptsApi,
+    profile: profileApi,
 };
 
 export default api;

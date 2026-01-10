@@ -173,17 +173,20 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Update last login timestamp
+    user.last_login_at = datetime.utcnow()
+
     # Create access token
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    
+
     # Create refresh token
     refresh_token = auth.create_refresh_token()
     refresh_token_hash = auth.hash_token(refresh_token)
-    
+
     # Store refresh token in database
     db_refresh_token = models.RefreshToken(
         user_id=user.id,
@@ -192,9 +195,9 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
     )
     db.add(db_refresh_token)
     db.commit()
-    
+
     return {
-        "access_token": access_token, 
+        "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }

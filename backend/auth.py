@@ -39,3 +39,23 @@ def hash_token(token: str) -> str:
 def get_refresh_token_expiry() -> datetime:
     """Get expiry time for refresh token"""
     return datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+# Password Reset and Email Verification Token Configuration
+PASSWORD_RESET_TOKEN_EXPIRE_HOURS = 1
+EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS = 24
+
+def create_password_reset_token() -> str:
+    """Create cryptographically secure password reset token (32 bytes)"""
+    return secrets.token_urlsafe(32)
+
+def create_email_verification_token() -> str:
+    """Create cryptographically secure email verification token (32 bytes)"""
+    return secrets.token_urlsafe(32)
+
+def get_password_reset_token_expiry() -> datetime:
+    """Get expiry time for password reset token (1 hour)"""
+    return datetime.utcnow() + timedelta(hours=PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
+
+def get_email_verification_token_expiry() -> datetime:
+    """Get expiry time for email verification token (24 hours)"""
+    return datetime.utcnow() + timedelta(hours=EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS)

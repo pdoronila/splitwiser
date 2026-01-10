@@ -250,3 +250,48 @@ class FriendBalance(BaseModel):
 class FriendExpenseWithSplits(ExpenseWithSplits):
     """Expense with group name for friend detail page."""
     group_name: Optional[str] = None
+
+
+# Profile Management and Password Recovery Schemas
+from datetime import datetime
+
+class PasswordChangeRequest(BaseModel):
+    """Request to change password (requires current password)"""
+    current_password: str = Field(..., min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request to send password reset email"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to reset password with token"""
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Request to update user profile"""
+    full_name: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+
+
+class VerifyEmailRequest(BaseModel):
+    """Request to verify new email address"""
+    token: str
+
+
+class UserProfile(BaseModel):
+    """Extended user profile with security metadata"""
+    id: int
+    email: str
+    full_name: str
+    is_active: bool
+    email_verified: bool
+    password_changed_at: Optional[datetime] = None
+    last_login_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

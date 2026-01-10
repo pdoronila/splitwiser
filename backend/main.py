@@ -14,7 +14,7 @@ import models
 from database import engine
 
 # Import routers
-from routers import auth, groups, members, expenses, balances, friends, receipts
+from routers import auth, groups, members, expenses, balances, friends, receipts, profile, password_recovery
 
 
 # Create database tables
@@ -63,6 +63,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(profile.router)
+app.include_router(password_recovery.router)
 app.include_router(groups.router)
 app.include_router(members.router)
 app.include_router(expenses.router)
