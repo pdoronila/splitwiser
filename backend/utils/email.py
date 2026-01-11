@@ -1,4 +1,4 @@
-"""Email service using Gmail SMTP for Splitwiser"""
+"""Email service using SMTP for Splitwiser (supports Gmail, Brevo, etc.)"""
 
 import os
 import smtplib
@@ -13,15 +13,16 @@ logger = logging.getLogger(__name__)
 # Environment configuration
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # SMTP login username
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # SMTP login password
+FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_EMAIL)  # Sender email (can be different for services like Brevo)
 FROM_NAME = os.getenv("FROM_NAME", "Splitwiser")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 def is_email_configured() -> bool:
     """Check if email service is properly configured"""
-    return bool(SMTP_EMAIL and SMTP_PASSWORD)
+    return bool(SMTP_EMAIL and SMTP_PASSWORD and FROM_EMAIL)
 
 
 async def send_email(
@@ -43,14 +44,14 @@ async def send_email(
         bool: True if email sent successfully, False otherwise
     """
     if not is_email_configured():
-        logger.error("Email service not configured: SMTP_EMAIL and SMTP_PASSWORD required")
+        logger.error("Email service not configured: SMTP_EMAIL, SMTP_PASSWORD, and FROM_EMAIL required")
         return False
 
     try:
         # Create message
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
-        message["From"] = f"{FROM_NAME} <{SMTP_EMAIL}>"
+        message["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
         message["To"] = to_email
 
         # Attach both plain text and HTML versions
