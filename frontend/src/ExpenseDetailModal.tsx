@@ -921,7 +921,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                                         </svg>
                                                     </button>
                                                 </div>
-                                                <span className="text-gray-900 dark:text-gray-100">{expense.exchange_rate}</span>
+                                                <span className="text-gray-900 dark:text-gray-100">1 {expense.currency} = {expense.exchange_rate} USD</span>
                                             </div>
                                         )}
                                     </div>
