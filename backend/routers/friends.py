@@ -5,6 +5,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
+import asyncio
 
 import models
 import schemas
@@ -12,6 +13,7 @@ from database import get_db
 from dependencies import get_current_user
 from utils.validation import get_user_by_email
 from utils.display import get_guest_display_name
+from utils.email import send_friend_request_email
 
 
 router = APIRouter(prefix="/friends", tags=["friends"])
@@ -38,15 +40,8 @@ def verify_friendship(db: Session, current_user_id: int, friend_id: int) -> mode
     return friend
 
 
-# Helper to send friend request email notification
-def send_friend_request_email(to_email: str, to_name: str, from_name: str):
-    """Send email notification for friend request. Placeholder for now."""
-    # TODO: Implement actual email sending via utils/email.py
-    print(f"[EMAIL] Friend request notification: {from_name} -> {to_email} ({to_name})")
-
-
 @router.post("/request", response_model=schemas.FriendRequestResponse)
-def send_friend_request(
+async def send_friend_request(
     request: schemas.FriendRequestCreate,
     current_user: Annotated[models.User, Depends(get_current_user)],
     db: Session = Depends(get_db)
@@ -54,12 +49,12 @@ def send_friend_request(
     """Send a friend request to another user by their ID."""
     if request.user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot send friend request to yourself")
-    
+
     # Check target user exists
     target_user = db.query(models.User).filter(models.User.id == request.user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Check if already friends
     existing_friendship = db.query(models.Friendship).filter(
         or_(
@@ -69,7 +64,7 @@ def send_friend_request(
     ).first()
     if existing_friendship:
         raise HTTPException(status_code=400, detail="Already friends with this user")
-    
+
     # Check if there's already a pending request (in either direction)
     existing_request = db.query(models.FriendRequest).filter(
         models.FriendRequest.status == "pending",
@@ -80,7 +75,7 @@ def send_friend_request(
     ).first()
     if existing_request:
         raise HTTPException(status_code=400, detail="Friend request already pending")
-    
+
     # Create new request
     new_request = models.FriendRequest(
         from_user_id=current_user.id,
@@ -90,14 +85,16 @@ def send_friend_request(
     db.add(new_request)
     db.commit()
     db.refresh(new_request)
-    
-    # Send email notification
-    send_friend_request_email(
-        target_user.email,
-        target_user.full_name or target_user.email,
-        current_user.full_name or current_user.email
+
+    # Send email notification (async, don't wait for result to avoid blocking)
+    asyncio.create_task(
+        send_friend_request_email(
+            target_user.email,
+            target_user.full_name or target_user.email,
+            current_user.full_name or current_user.email
+        )
     )
-    
+
     return schemas.FriendRequestResponse(
         id=new_request.id,
         from_user_id=current_user.id,

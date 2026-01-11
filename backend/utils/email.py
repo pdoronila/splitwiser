@@ -414,3 +414,80 @@ This is an automated security message from Splitwiser.
     """
 
     return await send_email(user_email, subject, html_content, text_content)
+
+
+async def send_friend_request_email(
+    to_email: str,
+    to_name: str,
+    from_name: str
+) -> bool:
+    """
+    Send friend request notification email
+
+    Args:
+        to_email: Email address of the user receiving the friend request
+        to_name: Full name of the user receiving the request
+        from_name: Full name of the user sending the request
+
+    Returns:
+        bool: True if email sent successfully
+    """
+    friend_requests_link = f"{FRONTEND_URL}/friends"
+
+    subject = f"{from_name} sent you a friend request on Splitwiser"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background-color: #4F46E5; color: white; padding: 20px; text-align: center; }}
+            .content {{ padding: 20px; background-color: #f9f9f9; }}
+            .button {{ display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+            .info {{ background-color: #EFF6FF; border-left: 4px solid #4F46E5; padding: 10px; margin: 20px 0; }}
+            .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #666; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>New Friend Request</h1>
+            </div>
+            <div class="content">
+                <p>Hi {to_name},</p>
+                <p><strong>{from_name}</strong> has sent you a friend request on Splitwiser!</p>
+                <div class="info">
+                    <p>Adding friends makes it easy to split expenses and keep track of who owes what.</p>
+                </div>
+                <p>Click the button below to view and respond to the request:</p>
+                <p style="text-align: center;">
+                    <a href="{friend_requests_link}" class="button">View Friend Request</a>
+                </p>
+                <p>Or copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #4F46E5;">{friend_requests_link}</p>
+            </div>
+            <div class="footer">
+                <p>This is an automated message from Splitwiser. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    text_content = f"""
+Hi {to_name},
+
+{from_name} has sent you a friend request on Splitwiser!
+
+Adding friends makes it easy to split expenses and keep track of who owes what.
+
+Click the link below to view and respond to the request:
+{friend_requests_link}
+
+---
+This is an automated message from Splitwiser.
+    """
+
+    return await send_email(to_email, subject, html_content, text_content)
