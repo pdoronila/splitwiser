@@ -264,3 +264,80 @@ async def verify_email(
     return {
         "message": "Email verified and updated successfully"
     }
+
+
+@router.post("/auth/resend-verification-email", dependencies=[Depends(email_verification_rate_limiter)])
+async def resend_verification_email(
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+):
+    """
+    Resend email verification for pending email change.
+    Only works if there's a pending email verification token.
+    """
+    # Check if email service is configured
+    if not is_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service not configured. Cannot resend verification email."
+        )
+
+    # Find the most recent unused, non-expired token for this user
+    pending_token = db.query(models.EmailVerificationToken).filter(
+        models.EmailVerificationToken.user_id == current_user.id,
+        models.EmailVerificationToken.used == False,
+        models.EmailVerificationToken.expires_at > datetime.utcnow()
+    ).order_by(models.EmailVerificationToken.created_at.desc()).first()
+
+    if not pending_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending email verification found"
+        )
+
+    # Check if new email is still available
+    existing_user = db.query(models.User).filter(
+        models.User.email == pending_token.new_email
+    ).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is no longer available"
+        )
+
+    # Create a new verification token
+    verification_token = auth.create_email_verification_token()
+    token_hash = auth.hash_token(verification_token)
+    expires_at = auth.get_email_verification_token_expiry()
+
+    # Invalidate the old token
+    pending_token.used = True
+
+    # Create new token with same email
+    db_token = models.EmailVerificationToken(
+        user_id=current_user.id,
+        new_email=pending_token.new_email,
+        token_hash=token_hash,
+        expires_at=expires_at
+    )
+    db.add(db_token)
+    db.commit()
+
+    # Send verification email to new address
+    email_sent = await send_email_verification_email(
+        user_email=current_user.email,
+        user_name=current_user.full_name or current_user.email,
+        new_email=pending_token.new_email,
+        verification_token=verification_token
+    )
+
+    if not email_sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email. Please try again later."
+        )
+
+    return {
+        "message": "Verification email has been resent. Please check your inbox.",
+        "new_email": pending_token.new_email
+    }

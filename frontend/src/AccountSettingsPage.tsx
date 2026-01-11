@@ -53,6 +53,11 @@ const AccountSettingsPage = () => {
   const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState('');
 
+  // Email verification resend state
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [resendError, setResendError] = useState('');
+  const [resendSuccess, setResendSuccess] = useState('');
+
   usePageTitle('Account Settings');
 
   useEffect(() => {
@@ -209,6 +214,21 @@ const AccountSettingsPage = () => {
       setPasswordError(error.message || 'Failed to change password');
     } finally {
       setIsPasswordLoading(false);
+    }
+  };
+
+  const handleResendVerificationEmail = async () => {
+    setResendError('');
+    setResendSuccess('');
+    setIsResendingEmail(true);
+
+    try {
+      const response = await api.profile.resendVerificationEmail();
+      setResendSuccess(response.message || 'Verification email has been resent. Please check your inbox.');
+    } catch (error: any) {
+      setResendError(error.message || 'Failed to resend verification email');
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -489,6 +509,18 @@ const AccountSettingsPage = () => {
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Security Information</h2>
 
+            {resendSuccess && (
+              <div className="mb-4 p-4 rounded-md bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                <p className="text-sm text-green-800 dark:text-green-200">{resendSuccess}</p>
+              </div>
+            )}
+
+            {resendError && (
+              <div className="mb-4 p-4 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-800 dark:text-red-200">{resendError}</p>
+              </div>
+            )}
+
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                 <span className="text-gray-600 dark:text-gray-400">Last Login:</span>
@@ -498,11 +530,27 @@ const AccountSettingsPage = () => {
                 <span className="text-gray-600 dark:text-gray-400">Password Last Changed:</span>
                 <span className="text-gray-900 dark:text-gray-100">{formatDate(profile?.password_changed_at || null)}</span>
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600 dark:text-gray-400">Email Verified:</span>
-                <span className={`font-medium ${profile?.email_verified ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                  {profile?.email_verified ? 'Yes' : 'Pending'}
-                </span>
+              <div className="py-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Email Verified:</span>
+                  <span className={`font-medium ${profile?.email_verified ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                    {profile?.email_verified ? 'Yes' : 'Pending'}
+                  </span>
+                </div>
+                {!profile?.email_verified && (
+                  <div className="mt-3">
+                    <button
+                      onClick={handleResendVerificationEmail}
+                      disabled={isResendingEmail}
+                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isResendingEmail ? 'Sending...' : 'Resend Verification Email'}
+                    </button>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Didn't receive the email? Click above to resend.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

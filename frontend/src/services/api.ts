@@ -523,6 +523,17 @@ export const profileApi = {
         }
         return response.json();
     },
+
+    resendVerificationEmail: async () => {
+        const response = await apiFetch('/auth/resend-verification-email', {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to resend verification email');
+        }
+        return response.json();
+    },
 };
 
 // Export a consolidated API object
