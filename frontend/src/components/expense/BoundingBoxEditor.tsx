@@ -32,6 +32,7 @@ interface TouchState {
     startBox: BoundingBox | null;
     touches: { id: number; x: number; y: number }[];
     startTime: number;
+    startScale?: number;
 }
 
 interface PanState {
@@ -69,7 +70,8 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
         startDistance: 0,
         startBox: null,
         touches: [],
-        startTime: 0
+        startTime: 0,
+        startScale: 1
     });
     const [panState, setPanState] = useState<PanState>({
         offsetX: 0,
@@ -481,7 +483,32 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
                     });
                 }
             } else {
+                // Touching on empty space - start creating a new box (same as mouse behavior)
                 setSelectedIndex(null);
+                const newBox: BoundingBox = {
+                    x: touch.x,
+                    y: touch.y,
+                    width: 0,
+                    height: 0,
+                    label: String(regions.length + 1)
+                };
+
+                setDragState({
+                    mode: 'create',
+                    boxIndex: regions.length,
+                    startX: touch.x,
+                    startY: touch.y,
+                    originalBox: newBox,
+                    isCreating: true
+                });
+                setTouchState({
+                    type: 'single',
+                    boxIndex: null,
+                    startDistance: 0,
+                    startBox: null,
+                    touches,
+                    startTime: Date.now()
+                });
             }
         } else if (e.touches.length === 2) {
             // Two-finger touch
@@ -511,17 +538,18 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
                 }
             }
 
-            // Otherwise, pan the image
+            // Otherwise, pan/zoom the image
             setTouchState({
                 type: 'pan',
                 boxIndex: null,
                 startDistance: distance,
                 startBox: null,
                 touches,
-                startTime: Date.now()
+                startTime: Date.now(),
+                startScale: panState.scale
             });
         }
-    }, [getCanvasCoordinates, findBoxAtPoint, getResizeHandle, regions, selectedIndex, getTouchDistance, clearLongPress]);
+    }, [getCanvasCoordinates, findBoxAtPoint, getResizeHandle, regions, selectedIndex, getTouchDistance, clearLongPress, panState.scale]);
 
     const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
         e.preventDefault();
@@ -542,47 +570,68 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
         }
 
         if (touchState.type === 'single' && dragState) {
-            // Single touch move/resize
-            const touch = touches[0];
-            const dx = touch.x - dragState.startX;
-            const dy = touch.y - dragState.startY;
+            if (dragState.mode === 'create') {
+                // Creating a new box via touch
+                const newBox: BoundingBox = {
+                    x: Math.min(dragState.startX, touches[0].x),
+                    y: Math.min(dragState.startY, touches[0].y),
+                    width: Math.abs(touches[0].x - dragState.startX),
+                    height: Math.abs(touches[0].y - dragState.startY),
+                    label: String(dragState.boxIndex + 1)
+                };
 
-            const newRegions = [...regions];
-            const box = { ...dragState.originalBox };
-
-            if (dragState.mode === 'move') {
-                box.x = Math.max(0, Math.min(imageDimensions.width - box.width, dragState.originalBox.x + dx));
-                box.y = Math.max(0, Math.min(imageDimensions.height - box.height, dragState.originalBox.y + dy));
-            } else if (dragState.mode.startsWith('resize-')) {
-                const isLeft = dragState.mode.includes('l');
-                const isTop = dragState.mode.includes('t');
-
-                if (isLeft) {
-                    const newX = Math.max(0, dragState.originalBox.x + dx);
-                    const newWidth = dragState.originalBox.width - (newX - dragState.originalBox.x);
-                    if (newWidth > 10) {
-                        box.x = newX;
-                        box.width = newWidth;
-                    }
+                const newRegions = [...regions];
+                if (dragState.isCreating) {
+                    newRegions.push(newBox);
+                    setDragState({ ...dragState, isCreating: false });
                 } else {
-                    box.width = Math.max(10, dragState.originalBox.width + dx);
+                    newRegions[dragState.boxIndex] = newBox;
+                }
+                setRegions(newRegions);
+                onChange(newRegions);
+            } else {
+                // Single touch move/resize
+                const touch = touches[0];
+                const dx = touch.x - dragState.startX;
+                const dy = touch.y - dragState.startY;
+
+                const newRegions = [...regions];
+                const box = { ...dragState.originalBox };
+
+                if (dragState.mode === 'move') {
+                    box.x = Math.max(0, Math.min(imageDimensions.width - box.width, dragState.originalBox.x + dx));
+                    box.y = Math.max(0, Math.min(imageDimensions.height - box.height, dragState.originalBox.y + dy));
+                } else if (dragState.mode.startsWith('resize-')) {
+                    const isLeft = dragState.mode.includes('l');
+                    const isTop = dragState.mode.includes('t');
+
+                    if (isLeft) {
+                        const newX = Math.max(0, dragState.originalBox.x + dx);
+                        const newWidth = dragState.originalBox.width - (newX - dragState.originalBox.x);
+                        if (newWidth > 10) {
+                            box.x = newX;
+                            box.width = newWidth;
+                        }
+                    } else {
+                        box.width = Math.max(10, dragState.originalBox.width + dx);
+                    }
+
+                    if (isTop) {
+                        const newY = Math.max(0, dragState.originalBox.y + dy);
+                        const newHeight = dragState.originalBox.height - (newY - dragState.originalBox.y);
+                        if (newHeight > 10) {
+                            box.y = newY;
+                            box.height = newHeight;
+                        }
+                    } else {
+                        box.height = Math.max(10, dragState.originalBox.height + dy);
+                    }
                 }
 
-                if (isTop) {
-                    const newY = Math.max(0, dragState.originalBox.y + dy);
-                    const newHeight = dragState.originalBox.height - (newY - dragState.originalBox.y);
-                    if (newHeight > 10) {
-                        box.y = newY;
-                        box.height = newHeight;
-                    }
-                } else {
-                    box.height = Math.max(10, dragState.originalBox.height + dy);
-                }
+                newRegions[dragState.boxIndex] = box;
+                setRegions(newRegions);
+                onChange(newRegions);
             }
-
-            newRegions[dragState.boxIndex] = box;
-            setRegions(newRegions);
-            onChange(newRegions);
         } else if (touchState.type === 'pinch' && e.touches.length === 2 && touchState.startBox) {
             // Pinch to resize
             const touch1 = touches[0];
@@ -610,10 +659,16 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
             setRegions(newRegions);
             onChange(newRegions);
         } else if (touchState.type === 'pan' && e.touches.length === 2) {
-            // Two-finger pan to scroll image
+            // Two-finger pan and zoom
             const touch1 = touches[0];
             const touch2 = touches[1];
 
+            // Calculate zoom scale from pinch distance change
+            const currentDistance = getTouchDistance(touch1, touch2);
+            const zoomScale = currentDistance / touchState.startDistance;
+            const newScale = Math.max(0.5, Math.min(3, (touchState.startScale || 1) * zoomScale));
+
+            // Calculate pan offset
             const currentCenterX = (touch1.x + touch2.x) / 2;
             const currentCenterY = (touch1.y + touch2.y) / 2;
 
@@ -626,7 +681,8 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
             setPanState(prev => ({
                 ...prev,
                 offsetX: prev.offsetX + dx,
-                offsetY: prev.offsetY + dy
+                offsetY: prev.offsetY + dy,
+                scale: newScale
             }));
 
             // Update touch state
@@ -639,6 +695,16 @@ const BoundingBoxEditor: React.FC<BoundingBoxEditorProps> = ({
 
     const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
         e.preventDefault();
+
+        // If we were creating a box, remove it if it's too small
+        if (dragState && dragState.mode === 'create') {
+            const lastBox = regions[regions.length - 1];
+            if (lastBox && (lastBox.width < 10 || lastBox.height < 10)) {
+                const newRegions = regions.slice(0, -1);
+                setRegions(newRegions);
+                onChange(newRegions);
+            }
+        }
 
         // Check if long press completed
         if (isLongPressing && selectedIndex !== null) {
