@@ -69,6 +69,28 @@ class OCRService:
 
         return response
 
+    def detect_document_text(self, image_bytes: bytes):
+        """
+        Detect document text with detailed bounding boxes using Google Cloud Vision.
+
+        Args:
+            image_bytes: Raw image bytes (JPEG, PNG, WebP)
+
+        Returns:
+            AnnotateImageResponse with full_text_annotation and text_annotations.
+            Includes detailed bounding box information for each detected text region.
+
+        Raises:
+            Exception: If Vision API returns an error
+        """
+        image = vision.Image(content=image_bytes)
+        response = self.client.document_text_detection(image=image)
+
+        if response.error.message:
+            raise Exception(f"Vision API error: {response.error.message}")
+
+        return response
+
 
 # Singleton instance - initialized once, reused for all requests
 ocr_service = OCRService()

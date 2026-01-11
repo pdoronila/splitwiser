@@ -91,6 +91,8 @@ class ExpenseItem(Base):
     description = Column(String, nullable=False)
     price = Column(Integer, nullable=False)  # In cents
     is_tax_tip = Column(Boolean, default=False)
+    split_type = Column(String, default='EQUAL')  # EQUAL, EXACT, PERCENT, SHARES
+    split_details = Column(String, nullable=True)  # JSON string of split details
 
 class ExpenseItemAssignment(Base):
     __tablename__ = "expense_item_assignments"

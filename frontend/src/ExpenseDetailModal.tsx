@@ -989,8 +989,39 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                                             a => a.user_id === split.user_id && a.is_guest === split.is_guest
                                                         );
                                                         if (isAssigned) {
-                                                            const shareCount = item.assignments.length;
-                                                            personSubtotal += Math.floor(item.price / shareCount);
+                                                            // Check if item has custom split type
+                                                            const itemSplitType = (item as any).split_type || 'EQUAL';
+                                                            const itemSplitDetails = (item as any).split_details || {};
+                                                            const personKey = split.is_guest ? `guest_${split.user_id}` : `user_${split.user_id}`;
+
+                                                            if (itemSplitType === 'EQUAL' || item.assignments.length === 1) {
+                                                                // Equal split or single assignee
+                                                                const shareCount = item.assignments.length;
+                                                                personSubtotal += Math.floor(item.price / shareCount);
+                                                            } else if (itemSplitType === 'EXACT') {
+                                                                // Use exact amount
+                                                                const detail = itemSplitDetails[personKey];
+                                                                const amount = detail?.amount || 0;
+                                                                personSubtotal += amount;
+                                                            } else if (itemSplitType === 'PERCENT') {
+                                                                // Use percentage
+                                                                const detail = itemSplitDetails[personKey];
+                                                                const percentage = detail?.percentage || 0;
+                                                                personSubtotal += Math.floor(item.price * (percentage / 100));
+                                                            } else if (itemSplitType === 'SHARES') {
+                                                                // Calculate based on shares
+                                                                let totalShares = 0;
+                                                                item.assignments.forEach((a: any) => {
+                                                                    const key = a.is_guest ? `guest_${a.user_id}` : `user_${a.user_id}`;
+                                                                    const detail = itemSplitDetails[key];
+                                                                    totalShares += detail?.shares || 1;
+                                                                });
+
+                                                                const personShares = itemSplitDetails[personKey]?.shares || 1;
+                                                                if (totalShares > 0) {
+                                                                    personSubtotal += Math.floor((item.price * personShares) / totalShares);
+                                                                }
+                                                            }
                                                         }
                                                     });
 

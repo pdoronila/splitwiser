@@ -2,6 +2,7 @@
 
 from typing import Annotated
 import os
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user
-from utils.validation import get_group_or_404, verify_group_membership, validate_expense_participants
+from utils.validation import get_group_or_404, verify_group_membership, validate_expense_participants, validate_item_split_details
 from utils.splits import calculate_itemized_splits
 from utils.currency import get_exchange_rate_for_expense
 from utils.display import get_guest_display_name
@@ -76,6 +77,10 @@ def create_expense(
         items=expense.items if expense.split_type == "ITEMIZED" else None
     )
 
+    # Validate item split details if itemized expense
+    if expense.split_type == "ITEMIZED" and expense.items:
+        validate_item_split_details(expense.items)
+
     # Fetch and cache the historical exchange rate for this expense
     exchange_rate = get_exchange_rate_for_expense(expense.date, expense.currency)
 
@@ -112,11 +117,25 @@ def create_expense(
     # Store items if ITEMIZED
     if expense.split_type == "ITEMIZED" and expense.items:
         for item in expense.items:
+            # Serialize split_details to JSON if present
+            split_details_json = None
+            if hasattr(item, 'split_details') and item.split_details:
+                # Convert ItemSplitDetail objects to dict if needed
+                split_details_dict = {}
+                for key, value in item.split_details.items():
+                    if hasattr(value, 'dict'):
+                        split_details_dict[key] = value.dict()
+                    else:
+                        split_details_dict[key] = value
+                split_details_json = json.dumps(split_details_dict)
+
             db_item = models.ExpenseItem(
                 expense_id=db_expense.id,
                 description=item.description,
                 price=item.price,
-                is_tax_tip=item.is_tax_tip
+                is_tax_tip=item.is_tax_tip,
+                split_type=getattr(item, 'split_type', 'EQUAL'),
+                split_details=split_details_json
             )
             db.add(db_item)
             db.commit()
@@ -234,13 +253,23 @@ def get_expense(
                     user_name=name
                 ))
 
+            # Deserialize split_details from JSON if present
+            split_details = None
+            if item.split_details:
+                try:
+                    split_details = json.loads(item.split_details)
+                except json.JSONDecodeError:
+                    split_details = None
+
             items_data.append(schemas.ExpenseItemDetail(
                 id=item.id,
                 expense_id=item.expense_id,
                 description=item.description,
                 price=item.price,
                 is_tax_tip=item.is_tax_tip,
-                assignments=assignment_details
+                assignments=assignment_details,
+                split_type=item.split_type or 'EQUAL',
+                split_details=split_details
             ))
 
     return schemas.ExpenseWithSplits(
@@ -314,6 +343,10 @@ def update_expense(
         items=expense_update.items if expense_update.split_type == "ITEMIZED" else None
     )
 
+    # Validate item split details if itemized expense
+    if expense_update.split_type == "ITEMIZED" and expense_update.items:
+        validate_item_split_details(expense_update.items)
+
     # Update expense fields
     # Normalize the date first for accurate comparison
     normalized_update_date = normalize_date(expense_update.date)
@@ -365,11 +398,25 @@ def update_expense(
     # Create new items if ITEMIZED
     if expense_update.split_type == "ITEMIZED" and expense_update.items:
         for item in expense_update.items:
+            # Serialize split_details to JSON if present
+            split_details_json = None
+            if hasattr(item, 'split_details') and item.split_details:
+                # Convert ItemSplitDetail objects to dict if needed
+                split_details_dict = {}
+                for key, value in item.split_details.items():
+                    if hasattr(value, 'dict'):
+                        split_details_dict[key] = value.dict()
+                    else:
+                        split_details_dict[key] = value
+                split_details_json = json.dumps(split_details_dict)
+
             db_item = models.ExpenseItem(
                 expense_id=expense_id,
                 description=item.description,
                 price=item.price,
-                is_tax_tip=item.is_tax_tip
+                is_tax_tip=item.is_tax_tip,
+                split_type=getattr(item, 'split_type', 'EQUAL'),
+                split_details=split_details_json
             )
             db.add(db_item)
             db.commit()

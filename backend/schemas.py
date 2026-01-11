@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
-from typing import Optional
+from typing import Optional, Dict
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -29,11 +29,18 @@ class ItemAssignment(BaseModel):
     user_id: int
     is_guest: bool = False
 
+class ItemSplitDetail(BaseModel):
+    amount: Optional[int] = None  # For EXACT split (in cents)
+    percentage: Optional[float] = None  # For PERCENTAGE split (0-100)
+    shares: Optional[int] = None  # For SHARES split
+
 class ExpenseItemCreate(BaseModel):
     description: str = Field(..., max_length=200)
     price: int  # In cents
     is_tax_tip: bool = False
     assignments: list[ItemAssignment] = []
+    split_type: Optional[str] = 'EQUAL'  # EQUAL, EXACT, PERCENT, SHARES
+    split_details: Optional[Dict[str, ItemSplitDetail]] = None  # Keyed by "user_{id}" or "guest_{id}"
 
 class ExpenseItemAssignmentDetail(BaseModel):
     user_id: int
@@ -47,6 +54,8 @@ class ExpenseItemDetail(BaseModel):
     price: int
     is_tax_tip: bool
     assignments: list[ExpenseItemAssignmentDetail]
+    split_type: Optional[str] = 'EQUAL'
+    split_details: Optional[Dict[str, Dict]] = None  # Deserialized from JSON
 
     class Config:
         from_attributes = True
@@ -333,3 +342,28 @@ class UserProfile(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# OCR Region Extraction schemas
+class RegionBoundingBox(BaseModel):
+    """Bounding box coordinates for a text region."""
+    x: float
+    y: float
+    width: float
+    height: float
+    confidence: Optional[float] = None
+    text: Optional[str] = None
+
+
+class ExtractRegionsRequest(BaseModel):
+    """Request to extract text from specific regions of a cached OCR response."""
+    cache_key: str
+    regions: list[RegionBoundingBox]
+
+
+class ExtractedItem(BaseModel):
+    """Item extracted from a specific region."""
+    region_id: str
+    description: str
+    price: int  # In cents
+    text: str  # Raw text from region
