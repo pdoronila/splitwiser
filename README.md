@@ -17,7 +17,7 @@ A full-featured expense splitting application built with FastAPI and React, insp
 - 📅 **Historical Exchange Rates** - Automatic caching of exchange rates from expense date
 - 🌍 **Live Currency Conversion** - Real-time exchange rates via Frankfurter API
 - 🎯 **Smart Currency Grouping** - View balances grouped by currency or converted to group default
-- 📸 **OCR Receipt Scanning V2** - Enhanced receipt parsing with Google Cloud Vision API
+- 📸 **OCR Receipt Scanning V3** - Two-phase interactive system with bounding box editor and per-item splits
 - 👻 **Guest Members** - Add non-registered users with claiming and balance aggregation
 - 👥 **Member Management** - Balance aggregation for registered users, not just guests
 - 🔗 **Public Share Links** - Share read-only group views without requiring login
@@ -26,6 +26,9 @@ A full-featured expense splitting application built with FastAPI and React, insp
 - 🏷️ **Icons/Categories** - Emoji icons for groups and expense categorization
 - 🌙 **Dark Mode** - System-wide dark theme with preference persistence
 - 🔑 **Secure Authentication** - Refresh tokens with server-side revocation
+- 📧 **Email Notifications** - Password reset, friend requests, and security alerts via Brevo API
+- 🛡️ **Security Hardened** - Rate limiting, CSP headers, input validation, file upload limits
+- ⚡ **Performance Optimized** - N+1 query elimination, database indexes, efficient SQL
 - 📱 **Progressive Web App** - Install to home screen with offline support
 - 🔌 **Offline Mode** - Create expenses offline, auto-sync when online
 - ❓ **Help & FAQ** - Comprehensive in-app documentation covering all features
@@ -56,6 +59,7 @@ A full-featured expense splitting application built with FastAPI and React, insp
 ### External APIs
 - **Frankfurter API** - Free, real-time and historical exchange rates (no API key required)
 - **Google Cloud Vision API** - OCR for receipt scanning (1,000 pages/month free tier)
+- **Brevo API** - Transactional email service (300 emails/day free tier)
 
 ## Getting Started
 
@@ -125,7 +129,8 @@ splitwise/
 │   │   ├── currency.py              # Exchange rate handling
 │   │   ├── validation.py            # Input validation helpers
 │   │   ├── splits.py                # Split calculation logic
-│   │   └── display.py               # Display name helpers
+│   │   ├── display.py               # Display name helpers
+│   │   └── email.py                 # Brevo API email service
 │   ├── ocr/                         # OCR integration
 │   │   ├── service.py               # Google Cloud Vision client
 │   │   ├── parser.py                # Receipt text parsing (V1)
@@ -208,6 +213,25 @@ Two viewing modes:
 
 ## Key Features
 
+### Email Notifications
+
+Splitwiser sends transactional emails for important account and social events:
+
+**Features:**
+- **Password Reset** - Secure reset links with 1-hour expiration
+- **Password Changed** - Security notifications when password is updated
+- **Email Verification** - Verify new email addresses with 24-hour expiration
+- **Email Change Alerts** - Security notifications sent to old email
+- **Friend Requests** - Email notifications when someone sends you a friend request
+
+**Implementation:**
+- Uses Brevo API (not SMTP) for reliable delivery
+- Professional HTML email templates with plain text fallbacks
+- Graceful fallback if email is not configured
+- Free tier: 300 emails/day
+
+See [EMAIL_SETUP.md](EMAIL_SETUP.md) for configuration instructions.
+
 ### Guest & Member Management
 
 Add and manage both registered and non-registered users:
@@ -228,18 +252,47 @@ Add and manage both registered and non-registered users:
 
 **Use Case:** Add "Bob's Friend" to a trip group. Later, when they register, they can claim the guest profile and inherit all expense history. Or link two registered users (e.g., a couple) to see their combined balance.
 
+### Advanced Receipt Scanning (Two-Phase OCR)
+
+Interactive receipt scanning with unprecedented accuracy:
+
+**Phase 1: Region Definition**
+- Automatic text region detection using AI
+- Interactive bounding box editor with drag, resize, delete
+- Pinch-to-zoom and touch gestures for mobile
+- Double-click to add custom regions
+- Visual feedback and numbered labels
+
+**Phase 2: Item Review**
+- Split-view with receipt preview and extracted items
+- Inline editing of descriptions and prices
+- Per-item split methods (Equal, Exact, Percentage, Shares)
+- Cropped region preview for each item
+- Bidirectional highlighting (item ↔ receipt region)
+- Smart sorting by position on receipt
+
+**Features:**
+- 5-minute response caching (single API call per receipt)
+- Client-side image compression (automatic)
+- Desktop and mobile optimized
+- Tax/tip item marking
+- Comprehensive validation
+
+**Example:** Scan a restaurant receipt, adjust the detected regions if needed, review/edit the extracted items, mark tax/tip, and apply different split methods per item (e.g., one person gets 2 shares of drinks, another gets 1 share).
+
 ### Itemized Expense Splitting
 
 Perfect for restaurant bills and itemized receipts:
 
 - **Per-Item Assignment** - Assign each item to specific people
-- **Shared Items** - Split items equally among multiple people
+- **Per-Item Split Methods** - Each item can use Equal, Exact, Percentage, or Shares splitting
+- **Shared Items** - Split items with custom ratios among multiple people
 - **Proportional Tax/Tip** - Automatically distribute tax/tip based on subtotal shares
-- **OCR Integration** - Scan receipts to auto-populate items
+- **OCR Integration** - Two-phase receipt scanning auto-populates items
 - **Smart UI** - Compact view for large groups, inline buttons for small groups
 - **Exact Calculations** - Handles rounding to ensure totals match exactly
 
-**Example:** Restaurant bill with 3 items + tax/tip. Each person is assigned their items, and the tax/tip is distributed proportionally to their subtotal.
+**Example:** Restaurant bill with 3 items + tax/tip. Each person is assigned their items with custom split methods (one item split 2:1 by shares, another split 60/40 by percentage), and the tax/tip is distributed proportionally to their subtotal.
 
 ### Refresh Token Authentication
 
@@ -308,10 +361,20 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for full instructions on deploying to Fly.io.
 Create a `.env` file in the backend directory:
 
 ```env
+# Required: Authentication
 SECRET_KEY=your-secret-key-here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=30
+
+# Optional: Transactional Email (Brevo API)
+BREVO_API_KEY=your-brevo-api-key
+FROM_EMAIL=noreply@yourdomain.com
+FROM_NAME=Splitwiser
+FRONTEND_URL=https://your-domain.com
+
+# Optional: Google Cloud Vision (OCR)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ```
 
 ### OCR Setup (Optional)
@@ -329,6 +392,17 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
 ```
 
 **Note:** Free tier includes 1,000 pages/month. Billing must be enabled but won't charge within free tier.
+
+### Email Setup (Optional)
+
+For transactional emails (password reset, friend requests, etc.), configure Brevo API:
+
+1. Create a [Brevo](https://www.brevo.com/) account (free tier: 300 emails/day)
+2. Verify a sender email address in Brevo dashboard
+3. Generate an API key from **SMTP & API** section
+4. Set environment variables (see above)
+
+See [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed step-by-step configuration guide.
 
 ## Contributing
 

@@ -124,16 +124,25 @@ const HelpPage: React.FC = () => {
           answer: [
             'Itemized splitting is ideal for restaurant bills and shopping trips:',
             '',
-            '1. Add items manually or scan a receipt',
-            '2. Assign each item to one or more people (shared items split equally)',
-            '3. Mark tax/tip items separately',
-            '4. Tax/tip is distributed proportionally based on each person\'s subtotal',
+            '1. Add items manually or scan a receipt with OCR',
+            '2. Assign each item to one or more people',
+            '3. Choose a split method for each item:',
+            '   • Equal: Divide evenly among assignees (default)',
+            '   • Exact: Specify exact dollar amounts per person',
+            '   • Percentage: Split by percentages (must total 100%)',
+            '   • Shares: Split by share ratio (e.g., 2:1)',
+            '4. Mark tax/tip items separately',
+            '5. Tax/tip is distributed proportionally based on each person\'s subtotal',
             '',
             'Example: If Alice ordered $15 of food and Bob ordered $10, and there\'s $5 tax/tip:',
             '• Total food: $25',
             '• Alice\'s portion of tax/tip: ($15 / $25) × $5 = $3',
             '• Bob\'s portion of tax/tip: ($10 / $25) × $5 = $2',
-            '• Alice owes: $18, Bob owes: $12'
+            '• Alice owes: $18, Bob owes: $12',
+            '',
+            'Advanced example with shares: If Alice and Bob share a $10 item with 2:1 shares:',
+            '• Alice gets 2/(2+1) = $6.67',
+            '• Bob gets 1/(2+1) = $3.33'
           ]
         },
         {
@@ -143,12 +152,25 @@ const HelpPage: React.FC = () => {
         {
           question: 'Can I attach receipt images?',
           answer: [
-            'Yes! Splitwiser supports receipt scanning:',
+            'Yes! Splitwiser features advanced two-phase OCR receipt scanning:',
             '',
-            '• Take a photo or upload an image when creating an expense',
-            '• OCR (Optical Character Recognition) automatically extracts items and prices',
-            '• Review and edit the extracted items before saving',
-            '• Receipt images are stored with the expense for future reference',
+            'Phase 1: Region Definition',
+            '• Automatic text region detection using AI',
+            '• Interactive bounding box editor (drag, resize, delete regions)',
+            '• Pinch-to-zoom and touch gestures for mobile',
+            '• Double-click to add custom regions',
+            '',
+            'Phase 2: Item Review & Editing',
+            '• Split-view with receipt preview and extracted items',
+            '• Inline editing of descriptions and prices',
+            '• Mark items as tax/tip',
+            '• Apply different split methods per item (Equal, Exact, Percentage, Shares)',
+            '• Cropped region preview for each item',
+            '',
+            'Features:',
+            '• 5-minute response caching (minimizes API calls)',
+            '• Automatic image compression',
+            '• Desktop and mobile optimized',
             '',
             'Note: Receipt scanning requires an internet connection and Google Cloud Vision API.'
           ]
@@ -258,6 +280,113 @@ const HelpPage: React.FC = () => {
         {
           question: 'Can I customize group appearance?',
           answer: 'Yes! When creating or editing a group, you can choose an emoji icon to help visually distinguish groups. You can also set a default currency for the group.'
+        }
+      ]
+    },
+    {
+      id: 'receipt-scanning',
+      title: 'Receipt Scanning (OCR)',
+      icon: '📸',
+      items: [
+        {
+          question: 'How does the two-phase receipt scanner work?',
+          answer: [
+            'Splitwiser uses an advanced two-phase OCR system for maximum accuracy:',
+            '',
+            'Phase 1: Interactive Region Definition',
+            '1. Upload or take a photo of your receipt',
+            '2. The AI automatically detects text regions (items on the receipt)',
+            '3. Adjust the bounding boxes if needed:',
+            '   • Drag boxes to move them',
+            '   • Resize from corners to adjust size',
+            '   • Click to delete unwanted regions',
+            '   • Double-click to add custom regions',
+            '4. Use pinch-to-zoom on mobile for precision',
+            '5. Click "Extract Items" when ready',
+            '',
+            'Phase 2: Item Review & Editing',
+            '1. Review the extracted items in split-view',
+            '2. Edit descriptions and prices as needed',
+            '3. Mark items as tax/tip',
+            '4. Choose split method for each item (Equal, Exact, Percentage, Shares)',
+            '5. Click on items to highlight their region on the receipt',
+            '6. Add to your expense when satisfied',
+            '',
+            'The system caches responses for 5 minutes to minimize API calls and costs.'
+          ]
+        },
+        {
+          question: 'What can I do with the bounding box editor?',
+          answer: [
+            'The interactive bounding box editor gives you full control:',
+            '',
+            'Desktop (Mouse):',
+            '• Click and drag to move boxes',
+            '• Drag corners to resize',
+            '• Click a box to delete it',
+            '• Double-click canvas to add new box',
+            '• Scroll to zoom in/out',
+            '',
+            'Mobile (Touch):',
+            '• Tap and drag to move boxes',
+            '• Pinch to zoom (zooms around pinch center)',
+            '• Two-finger drag to pan',
+            '• Tap a box to delete it',
+            '• Double-tap canvas to add new box',
+            '',
+            'All boxes are numbered and match the item list for easy reference.'
+          ]
+        },
+        {
+          question: 'Can I apply different split methods to different items?',
+          answer: [
+            'Yes! Each item can have its own split method:',
+            '',
+            'Example: Restaurant bill with friends',
+            '• Appetizer ($12) - Equal split among 3 people',
+            '• Main dishes ($40) - Exact amounts (Alice $20, Bob $15, Charlie $5)',
+            '• Drinks ($15) - Shares split (Alice 2 shares, Bob 1 share)',
+            '• Dessert ($10) - Percentage split (60% Alice, 40% Bob)',
+            '• Tax/Tip ($12) - Automatically distributed proportionally',
+            '',
+            'This flexibility ensures everyone pays exactly what they should based on what they ordered.'
+          ]
+        },
+        {
+          question: 'What if the OCR doesn\'t detect items correctly?',
+          answer: [
+            'The two-phase system gives you full control to fix any issues:',
+            '',
+            'Phase 1 fixes:',
+            '• Drag boxes to cover missed items',
+            '• Resize boxes to include complete item names/prices',
+            '• Delete false detections (headers, footers, etc.)',
+            '• Add new boxes for anything the AI missed',
+            '',
+            'Phase 2 fixes:',
+            '• Edit item descriptions and prices directly',
+            '• Delete incorrect items',
+            '• Add manual items if needed',
+            '',
+            'The system learns from the detected regions, so adjusting boxes in Phase 1 improves the extraction in Phase 2.'
+          ]
+        },
+        {
+          question: 'Does receipt scanning work offline?',
+          answer: [
+            'No, receipt scanning requires an internet connection because:',
+            '',
+            '• It uses Google Cloud Vision API for text detection',
+            '• The API processes the image on Google\'s servers',
+            '• Results are cached for 5 minutes to minimize API usage',
+            '',
+            'However, you can still:',
+            '• Create itemized expenses manually while offline',
+            '• Add items one by one',
+            '• Sync when you\'re back online',
+            '',
+            'The app will show a warning if you try to scan a receipt while offline.'
+          ]
         }
       ]
     },
@@ -443,8 +572,57 @@ const HelpPage: React.FC = () => {
           ]
         },
         {
-          question: 'Can I change my password?',
-          answer: 'Password reset functionality is not currently implemented. If you need to change your password, please contact support or create a new account.'
+          question: 'How do I reset or change my password?',
+          answer: [
+            'Splitwiser supports both password reset and password change:',
+            '',
+            'Forgot Password (Not logged in):',
+            '1. Click "Forgot password?" on the login page',
+            '2. Enter your email address',
+            '3. Check your email for a reset link (expires in 1 hour)',
+            '4. Click the link and enter your new password',
+            '',
+            'Change Password (Logged in):',
+            '1. Go to your account settings',
+            '2. Click "Change Password"',
+            '3. Enter your current password and new password',
+            '4. You\'ll be logged out of all other devices for security',
+            '',
+            'Note: Password reset emails are sent via Brevo. If you don\'t receive an email, check your spam folder.'
+          ]
+        },
+        {
+          question: 'Can I change my email address?',
+          answer: [
+            'Yes! You can update your email address:',
+            '',
+            '1. Go to your account settings',
+            '2. Click "Change Email"',
+            '3. Enter your new email address',
+            '4. Check your new email for a verification link (expires in 24 hours)',
+            '5. Click the link to complete the change',
+            '',
+            'Security features:',
+            '• Verification required before the change takes effect',
+            '• Your old email receives a security notification',
+            '• You\'ll be logged out and need to log in with your new email'
+          ]
+        },
+        {
+          question: 'Will I get email notifications?',
+          answer: [
+            'Splitwiser sends transactional emails for important events:',
+            '',
+            '• Password reset requests (with secure reset links)',
+            '• Password changed confirmations (security alerts)',
+            '• Email verification (when changing your email)',
+            '• Email change notifications (sent to old email)',
+            '• Friend request notifications',
+            '',
+            'All emails include professional templates and are sent via Brevo for reliable delivery.',
+            '',
+            'Note: Email notifications are optional. If not configured by the administrator, you won\'t receive emails but all features still work normally.'
+          ]
         }
       ]
     },

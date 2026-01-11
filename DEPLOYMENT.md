@@ -65,7 +65,15 @@ fly secrets set SECRET_KEY="your-secure-secret-key-here"
 
 # Optional: Google Cloud credentials for OCR (base64 encoded)
 cat path/to/google-credentials.json | base64 | fly secrets set GOOGLE_CREDENTIALS_BASE64=-
+
+# Optional: Brevo API for email notifications
+fly secrets set BREVO_API_KEY="your-brevo-api-key"
+fly secrets set FROM_EMAIL="noreply@yourdomain.com"
+fly secrets set FROM_NAME="Splitwiser"
+fly secrets set FRONTEND_URL="https://your-app.fly.dev"
 ```
+
+For email configuration, see [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed setup instructions.
 
 ### 5. Deploy
 

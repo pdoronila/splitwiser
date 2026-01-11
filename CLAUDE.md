@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Splitwiser is a Splitwise clone for expense splitting among friends and groups. It features multi-currency support (USD, EUR, GBP, JPY, CAD, CNY, HKD) with historical exchange rate caching, various split types (equal, exact, percentage, shares, itemized), OCR receipt scanning V2 with Google Cloud Vision, group-level currency management, debt simplification, guest and member management with balance aggregation, dark mode, refresh token authentication, Progressive Web App (PWA) with offline support via IndexedDB, and mobile-optimized UI with Web Share API.
+Splitwiser is a Splitwise clone for expense splitting among friends and groups. It features multi-currency support (USD, EUR, GBP, JPY, CAD, CNY, HKD) with historical exchange rate caching, various split types (equal, exact, percentage, shares, itemized with per-item split methods), two-phase interactive OCR receipt scanning with bounding box editor and 5-minute caching, group-level currency management, debt simplification, guest and member management with balance aggregation, dark mode, refresh token authentication with password reset and email change flows, email notifications via Brevo API (friend requests, password reset, security alerts), Progressive Web App (PWA) with offline support via IndexedDB, and mobile-optimized UI with pinch-to-zoom gestures and Web Share API.
 
 ## Architecture
 
@@ -19,24 +19,26 @@ Splitwiser is a Splitwise clone for expense splitting among friends and groups. 
 - `backend/dependencies.py` - Shared FastAPI dependencies (auth, database session)
 
 **Routers (Modular API Endpoints):**
-- `backend/routers/auth.py` - Authentication (login, register, refresh tokens, logout)
+- `backend/routers/auth.py` - Authentication (login, register, refresh tokens, logout, password reset, email change)
 - `backend/routers/groups.py` - Group CRUD, public share links
 - `backend/routers/members.py` - Member and guest management, claiming
 - `backend/routers/expenses.py` - Expense CRUD, split calculations
 - `backend/routers/balances.py` - Balance calculations, debt simplification
-- `backend/routers/friends.py` - Friend management
-- `backend/routers/receipts.py` - OCR receipt scanning
+- `backend/routers/friends.py` - Friend management, friend request emails
+- `backend/routers/ocr.py` - Two-phase OCR (region detection, text extraction)
 
 **Utilities:**
 - `backend/utils/currency.py` - Exchange rate fetching (Frankfurter API), caching
 - `backend/utils/validation.py` - Split validation, participant verification
 - `backend/utils/splits.py` - Split calculation logic (equal, exact, percentage, shares, itemized)
 - `backend/utils/display.py` - Display name helpers for guests and claimed users
+- `backend/utils/email.py` - Brevo API email service for transactional emails
 
 **OCR Integration:**
 - `backend/ocr/service.py` - Google Cloud Vision API client (singleton)
 - `backend/ocr/parser.py` - Receipt text parsing and item extraction (V1)
 - `backend/ocr/parser_v2.py` - Enhanced spatial layout parser with improved accuracy
+- `backend/ocr/regions.py` - Smart region detection and filtering for two-phase OCR (V3)
 
 **Database Migrations:**
 - `backend/migrations/` - Migration scripts with helper tools
@@ -75,14 +77,19 @@ Splitwiser is a Splitwise clone for expense splitting among friends and groups. 
 - `frontend/src/utils/participantHelpers.ts` - Participant data helpers
 
 **Feature Components:**
-- `frontend/src/ReceiptScanner.tsx` - OCR receipt scanning (V2 parser)
+- `frontend/src/ReceiptScanner.tsx` - Two-phase OCR receipt scanning (V3)
+- `frontend/src/components/expense/BoundingBoxEditor.tsx` - Interactive bounding box editor
+- `frontend/src/components/expense/ItemPreviewEditor.tsx` - Item review and editing interface
+- `frontend/src/components/expense/ReceiptCanvas.tsx` - Canvas rendering for OCR
+- `frontend/src/components/expense/ExpenseItemList.tsx` - Itemized expense UI with per-item splits
 - `frontend/src/ManageGuestModal.tsx` - Guest management and balance aggregation
-- `frontend/src/ManageMemberModal.tsx` - Member management for registered users (NEW)
+- `frontend/src/ManageMemberModal.tsx` - Member management for registered users
 - `frontend/src/AddGuestModal.tsx` - Add non-registered users (mobile-friendly)
 - `frontend/src/AddMemberModal.tsx` - Add registered members
 - `frontend/src/DeleteGroupConfirm.tsx` - Custom confirmation dialogs (replaces browser alerts)
-- `frontend/src/components/expense/ExpenseItemList.tsx` - Itemized expense UI
 - `frontend/src/hooks/useItemizedExpense.ts` - Itemized expense state management
+- `frontend/src/hooks/useBoundingBoxes.ts` - Bounding box state management for OCR
+- `frontend/src/utils/imageCompression.ts` - Client-side image compression
 
 **PWA Support:**
 - `frontend/public/manifest.json` - PWA manifest for installable app
@@ -154,6 +161,11 @@ ALTER TABLE table_name ADD COLUMN column_name TYPE DEFAULT 'value';
 - `POST /auth/refresh` - Exchange refresh token for new access token
 - `POST /auth/logout` - Revoke refresh token
 - `GET /users/me` - Current user info
+- `POST /auth/forgot-password` - Request password reset email
+- `POST /auth/reset-password` - Reset password with token
+- `POST /auth/change-password` - Change password (requires authentication)
+- `POST /auth/change-email` - Change email address with verification
+- `GET /auth/verify-email/{token}` - Verify new email address
 
 ### Groups
 - `POST /groups` - Create group (accepts `default_currency` field)
@@ -170,6 +182,7 @@ ALTER TABLE table_name ADD COLUMN column_name TYPE DEFAULT 'value';
 
 ### Friends & Expenses
 - `POST /friends`, `GET /friends` - Friend management
+- `POST /friends/request` - Send friend request email notification
 - `POST /expenses` - Create expense (supports split_type: EQUAL, EXACT, PERCENTAGE, SHARES, ITEMIZED; caches historical exchange rate)
 - `GET /expenses` - List expenses
 - `GET /expenses/{expense_id}` - Get expense details (includes items for ITEMIZED type)
@@ -184,6 +197,10 @@ ALTER TABLE table_name ADD COLUMN column_name TYPE DEFAULT 'value';
 - `GET /balances` - User balance summary across all groups (includes managed guest balances)
 - `GET /simplify_debts/{group_id}` - Debt simplification using cached exchange rates
 - `GET /exchange_rates` - Current exchange rates (Frankfurter API)
+
+### OCR Receipt Scanning
+- `POST /ocr/detect-regions` - Upload receipt, get detected text regions with bounding boxes (Phase 1)
+- `POST /ocr/extract-regions` - Extract text from specific regions using provided coordinates (Phase 2)
 
 ## Feature Details
 
@@ -330,17 +347,198 @@ Fetch current rates
 Display with today's conversion rates
 ```
 
-## OCR Receipt Scanning
+## Email Notifications
 
-Receipt scanning uses Google Cloud Vision API for text extraction.
+Splitwiser supports transactional emails via Brevo API (optional feature).
+
+### Email Service Architecture
+
+**Email Utility ([backend/utils/email.py](backend/utils/email.py)):**
+- Brevo API integration (not SMTP)
+- Async email sending with error handling
+- HTML and plain text email templates
+- Environment-based configuration
+- Graceful fallback if not configured
+
+### Email Types
+
+1. **Password Reset**
+   - Triggered by "Forgot Password" flow
+   - Contains secure reset link (expires in 1 hour)
+   - Sent via `send_password_reset_email()`
+
+2. **Password Changed Notification**
+   - Sent after successful password change
+   - Security notification to alert user
+   - Sent via `send_password_changed_notification()`
+
+3. **Email Verification**
+   - Sent when user changes email address
+   - Contains verification link (expires in 24 hours)
+   - Sent via `send_email_verification_email()`
+
+4. **Email Change Notification**
+   - Security alert sent to old email address
+   - Notifies user of email change
+   - Sent via `send_email_change_notification()`
+
+5. **Friend Request Notification**
+   - Sent when someone sends you a friend request
+   - Contains link to view pending requests
+   - Sent via `send_friend_request_email()`
+
+### Configuration
+
+**Environment Variables:**
+- `BREVO_API_KEY` - Your Brevo API key
+- `FROM_EMAIL` - Verified sender email in Brevo
+- `FROM_NAME` - Sender display name (default: "Splitwiser")
+- `FRONTEND_URL` - Base URL for email links
+
+**Configuration Check:**
+```python
+from backend.utils.email import is_email_configured
+if is_email_configured():
+    # Email service is ready
+```
+
+### API Integration
+
+**Brevo API:**
+- Endpoint: `https://api.brevo.com/v3/smtp/email`
+- Authentication: API key in request headers
+- No SMTP configuration needed
+- Free tier: 300 emails/day
+
+### Error Handling
+
+- Gracefully handles API failures (logs error, returns False)
+- Timeout protection (10 second limit)
+- Configuration validation before sending
+- Detailed error logging for debugging
+
+### Setup Guide
+
+See [EMAIL_SETUP.md](EMAIL_SETUP.md) for step-by-step configuration instructions.
+
+## OCR Receipt Scanning (Two-Phase Interactive System)
+
+Receipt scanning uses Google Cloud Vision API with an advanced two-phase interactive workflow.
 
 ### Architecture
 
 ```
 backend/ocr/
 ├── service.py   # Google Cloud Vision client (singleton)
-└── parser.py    # Receipt text parsing & item extraction
+├── parser.py    # Receipt text parsing & item extraction (V1)
+├── parser_v2.py # Enhanced spatial layout parser
+└── regions.py   # Smart region detection and filtering (Two-Phase OCR)
+
+backend/routers/
+└── ocr.py       # OCR endpoints (region detection, extraction)
+
+frontend/src/
+├── ReceiptScanner.tsx                    # Main scanner component
+├── components/expense/
+│   ├── BoundingBoxEditor.tsx             # Interactive region editor
+│   ├── ItemPreviewEditor.tsx             # Item review interface
+│   └── ReceiptCanvas.tsx                 # Canvas rendering engine
+├── hooks/
+│   └── useBoundingBoxes.ts               # Bounding box state management
+└── utils/
+    └── imageCompression.ts               # Client-side compression
 ```
+
+### Two-Phase OCR System
+
+**Phase 1: Interactive Region Definition**
+- Automatic detection of text regions using Vision API paragraph boundaries
+- Interactive canvas for adjusting bounding boxes
+- Drag to move, resize from corners, double-click to add new boxes
+- Click to delete regions
+- Pinch-to-zoom with proper centering (mobile touch support)
+- Numbered labels for clear identification
+- Visual feedback during interaction
+
+**Phase 2: Item Review & Editing**
+- Split-view interface showing receipt regions and extracted items
+- Inline editing of descriptions and prices
+- Tax/tip marking per item
+- Bidirectional highlighting (click item → highlights box on receipt)
+- Items sorted by Y-coordinate (top-to-bottom on receipt)
+- Cropped region preview above each item
+- Individual edit buttons (no global edit mode)
+
+### Backend Implementation
+
+**API Endpoints:**
+- `POST /ocr/detect-regions` - Upload receipt, get detected text regions with bounding boxes
+- `POST /ocr/extract-regions` - Extract text from specific regions (coordinates provided by user)
+
+**Smart Region Detection ([backend/ocr/regions.py](backend/ocr/regions.py)):**
+- Uses Vision API paragraph boundaries for line-level detection (not individual words)
+- Intelligent filtering removes headers, footers, noise
+- Confidence scoring for extracted items
+- Enhanced price matching (handles prices with/without dollar signs)
+- Initial suggestions with smart defaults
+
+**Response Caching:**
+- In-memory caching of Vision API responses (5-minute TTL)
+- Single OCR call per receipt minimizes API usage
+- Cache key based on image hash
+- Reduces costs and improves performance
+
+**File Validation:**
+- 10MB maximum file size
+- JPEG, PNG, WebP formats supported
+- Comprehensive error handling
+
+### Frontend Features
+
+**Client-Side Image Compression ([frontend/src/utils/imageCompression.ts](frontend/src/utils/imageCompression.ts)):**
+- Automatically compresses images before upload
+- Maximum dimension: 1920px
+- Target size: ~1MB
+- Preserves image quality while reducing bandwidth
+
+**Interactive Canvas Editor ([frontend/src/components/expense/BoundingBoxEditor.tsx](frontend/src/components/expense/BoundingBoxEditor.tsx)):**
+- Full touch support (mobile-friendly)
+- Pinch-to-zoom with proper pivot point calculations
+- Drag gestures for panning
+- Mouse support for desktop
+- Visual feedback for selected regions
+- Coordinate system transformations (OCR ↔ display)
+
+**Item Preview Editor ([frontend/src/components/expense/ItemPreviewEditor.tsx](frontend/src/components/expense/ItemPreviewEditor.tsx)):**
+- Per-item split methods (Equal, Exact, Percentage, Shares)
+- Dynamic split detail inputs based on split type
+- Visual region preview for each item
+- Save/cancel/delete for individual items
+- Validation for split totals
+
+### Per-Item Split Methods
+
+**Flexible Splitting:**
+Each item in an itemized expense can have its own split method:
+- **Equal** - Divide item equally among assignees (default)
+- **Exact** - Specify exact dollar amounts per person
+- **Percentage** - Split by percentages (must total 100%)
+- **Shares** - Split by share ratio (e.g., 2:1)
+
+**Example:**
+```
+Item: "2 Corona $10.00"
+Assignees: Alice, Bob
+Split Method: SHARES
+Split Details: Alice=2, Bob=1
+Result: Alice=$6.67, Bob=$3.33
+```
+
+**Backend Validation:**
+- EXACT: Validates amounts match item price
+- PERCENT: Ensures percentages add to 100%
+- SHARES: Validates positive share values
+- Comprehensive error messages
 
 ### Setup
 
@@ -356,28 +554,7 @@ backend/ocr/
 
 - 1,000 pages/month free
 - Requires GCP account with billing enabled (won't charge within free tier)
-
-### API Endpoint
-
-- `POST /ocr/scan-receipt` - Upload receipt image, returns extracted items
-- Accepts: JPEG, PNG, WebP (max 10MB)
-- Returns:
-  ```json
-  {
-    "items": [{"description": "Burger", "price": 1299}],
-    "total": 1299,
-    "raw_text": "Full receipt text..."
-  }
-  ```
-
-### How It Works
-
-1. Frontend uploads image to `/ocr/scan-receipt`
-2. Backend sends image bytes to Google Cloud Vision API
-3. Vision returns full text with bounding boxes
-4. Parser extracts item-price pairs using regex patterns
-5. Filters out noise (totals, tax, dates, phone numbers)
-6. Returns structured items with prices in cents
+- Caching reduces API calls significantly
 
 ## Guest User Management
 
@@ -1027,6 +1204,70 @@ Receipt scanning unavailable offline:
 - Warning message displayed when offline
 - Scanner disabled in offline mode
 - Requires Google Cloud Vision API (network required)
+
+## Performance Optimizations
+
+Splitwiser has been extensively optimized to eliminate N+1 query problems and improve response times.
+
+### Database Optimizations
+
+**Indexes Added:**
+- Expense queries indexed for faster lookups
+- Group member queries optimized with proper joins
+- Balance calculations use efficient SQL queries
+
+**N+1 Query Elimination:**
+- Group details endpoint: Uses `joinedload` for members and guests
+- Expense listing: Pre-loads related data in single query
+- Balance calculations: Aggregates data efficiently
+- Public group endpoints: Optimized for anonymous access
+- Friend expenses and balances: Batch loading implemented
+
+### Query Optimization Locations
+
+The following endpoints have been optimized:
+- `GET /groups` - Group listing with member counts
+- `GET /groups/{group_id}` - Group details with all relations
+- `GET /groups/{group_id}/balances` - Balance calculations
+- `GET /expenses` - Expense listing with participant details
+- `GET /public/groups/{share_link_id}` - Public group access
+- `GET /friends` - Friend listing with expense data
+
+## Security Features
+
+### Rate Limiting
+
+**Protected Endpoints:**
+- Authentication endpoints (`/token`, `/register`) - Prevents brute force attacks
+- OCR endpoint (`/ocr/scan-receipt`) - Prevents API abuse (10MB file limit)
+- Rate limits enforced using `slowapi` library
+- Supports `X-Forwarded-For` header for proxy environments
+
+**Configuration:**
+- Default: 5 requests per minute for auth endpoints
+- Default: 10 requests per minute for OCR endpoint
+- Configurable per-endpoint limits
+
+### Security Headers
+
+**HTTP Security Headers:**
+- `Content-Security-Policy` - Restricts resource loading
+- `X-Content-Type-Options: nosniff` - Prevents MIME type sniffing
+- `X-Frame-Options: DENY` - Prevents clickjacking
+- `X-XSS-Protection: 1; mode=block` - XSS protection
+
+### Input Validation
+
+**Schema Validation:**
+- Maximum length enforcement on all text fields
+- File upload size limits (10MB for receipts)
+- Email format validation
+- Currency validation against allowed list
+
+**Information Leakage Prevention:**
+- OCR error messages sanitized
+- Generic error responses for security-sensitive operations
+- No exposure of internal paths or stack traces
 
 ## Currency Enhancements
 
