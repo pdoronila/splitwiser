@@ -79,6 +79,7 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const [showParticipantSelector, setShowParticipantSelector] = useState(false);
     const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showExchangeRateInfo, setShowExchangeRateInfo] = useState(false);
     const [alertDialog, setAlertDialog] = useState<{
         isOpen: boolean;
         title: string;
@@ -913,13 +914,38 @@ const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                                                 <div className="flex items-center gap-1">
                                                     <span className="text-gray-500 dark:text-gray-400">Exchange Rate</span>
                                                     <button
-                                                        title="This exchange rate was captured at the time of the expense and is used to normalize the amount for debt simplification."
-                                                        className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help"
+                                                        onClick={() => setShowExchangeRateInfo(true)}
+                                                        className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
                                                     </button>
+
+                                                    {/* Exchange Rate Info Modal */}
+                                                    {showExchangeRateInfo && (
+                                                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowExchangeRateInfo(false)}>
+                                                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+                                                                <div className="flex items-center gap-3 mb-4">
+                                                                    <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                                                                        <svg className="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                        </svg>
+                                                                    </div>
+                                                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Exchange Rate</h3>
+                                                                </div>
+                                                                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6">
+                                                                    This exchange rate was captured at the time of the expense and is used to normalize amounts when calculating balances and simplifying debts between different currencies.
+                                                                </p>
+                                                                <button
+                                                                    onClick={() => setShowExchangeRateInfo(false)}
+                                                                    className="w-full py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-xl transition-colors"
+                                                                >
+                                                                    Got it
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <span className="text-gray-900 dark:text-gray-100">1 {expense.currency} = {expense.exchange_rate} USD</span>
                                             </div>
