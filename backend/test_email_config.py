@@ -14,9 +14,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from utils.email import (
     is_email_configured,
     send_email,
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_EMAIL,
+    BREVO_API_KEY,
     FROM_EMAIL,
     FROM_NAME,
     FRONTEND_URL
@@ -26,12 +24,9 @@ from utils.email import (
 def print_config():
     """Print current email configuration"""
     print("=" * 60)
-    print("EMAIL CONFIGURATION")
+    print("EMAIL CONFIGURATION (Brevo API)")
     print("=" * 60)
-    print(f"SMTP_HOST:     {SMTP_HOST}")
-    print(f"SMTP_PORT:     {SMTP_PORT}")
-    print(f"SMTP_EMAIL:    {SMTP_EMAIL or '❌ NOT SET'}")
-    print(f"SMTP_PASSWORD: {'✓ SET' if os.getenv('SMTP_PASSWORD') else '❌ NOT SET'}")
+    print(f"BREVO_API_KEY: {'✓ SET (hidden)' if BREVO_API_KEY else '❌ NOT SET'}")
     print(f"FROM_EMAIL:    {FROM_EMAIL or '❌ NOT SET'}")
     print(f"FROM_NAME:     {FROM_NAME}")
     print(f"FRONTEND_URL:  {FRONTEND_URL}")
@@ -92,12 +87,15 @@ async def main():
     if not is_email_configured():
         print("\n❌ Email service is not configured.")
         print("\nTo configure, set these environment variables:")
-        print("  export SMTP_HOST=smtp-relay.brevo.com")
-        print("  export SMTP_PORT=587")
-        print("  export SMTP_EMAIL=9fc28f001@smtp-brevo.com")
-        print("  export SMTP_PASSWORD=<your-brevo-smtp-key>")
+        print("  export BREVO_API_KEY=<your-brevo-api-key>")
         print("  export FROM_EMAIL=<your-verified-sender-email>")
         print("  export FROM_NAME=Splitwiser")
+        print()
+        print("To get your Brevo API key:")
+        print("  1. Sign up at https://www.brevo.com/")
+        print("  2. Go to Settings > SMTP & API > API Keys")
+        print("  3. Create a new API key")
+        print("  4. Verify your sender email in Settings > Senders & IP")
         print()
         return
 

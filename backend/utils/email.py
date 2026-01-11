@@ -1,28 +1,26 @@
-"""Email service using SMTP for Splitwiser (supports Gmail, Brevo, etc.)"""
+"""Email service using Brevo API for Splitwiser"""
 
 import os
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from typing import Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Environment configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # SMTP login username
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # SMTP login password
-FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_EMAIL)  # Sender email (can be different for services like Brevo)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")  # Your Brevo API key
+FROM_EMAIL = os.getenv("FROM_EMAIL")  # Verified sender email in Brevo
 FROM_NAME = os.getenv("FROM_NAME", "Splitwiser")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+# Brevo API endpoint
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def is_email_configured() -> bool:
     """Check if email service is properly configured"""
-    return bool(SMTP_EMAIL and SMTP_PASSWORD and FROM_EMAIL)
+    return bool(BREVO_API_KEY and FROM_EMAIL)
 
 
 async def send_email(
@@ -32,7 +30,7 @@ async def send_email(
     text_content: str
 ) -> bool:
     """
-    Send an email via SMTP
+    Send an email via Brevo API
 
     Args:
         to_email: Recipient email address
@@ -44,36 +42,53 @@ async def send_email(
         bool: True if email sent successfully, False otherwise
     """
     if not is_email_configured():
-        logger.error("Email service not configured: SMTP_EMAIL, SMTP_PASSWORD, and FROM_EMAIL required")
+        logger.error("Email service not configured: BREVO_API_KEY and FROM_EMAIL required")
         return False
 
     try:
-        # Create message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
-        message["To"] = to_email
+        # Prepare Brevo API request
+        headers = {
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json"
+        }
 
-        # Attach both plain text and HTML versions
-        part1 = MIMEText(text_content, "plain")
-        part2 = MIMEText(html_content, "html")
-        message.attach(part1)
-        message.attach(part2)
+        payload = {
+            "sender": {
+                "name": FROM_NAME,
+                "email": FROM_EMAIL
+            },
+            "to": [
+                {
+                    "email": to_email
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": text_content
+        }
 
-        # Connect to SMTP server and send
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()  # Upgrade to secure connection
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.send_message(message)
+        # Send request to Brevo API
+        response = requests.post(
+            BREVO_API_URL,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
 
-        logger.info(f"Email sent successfully to {to_email}")
-        return True
+        # Check response
+        if response.status_code == 201:
+            logger.info(f"Email sent successfully to {to_email} (Message ID: {response.json().get('messageId')})")
+            return True
+        else:
+            logger.error(f"Brevo API error ({response.status_code}): {response.text}")
+            return False
 
-    except smtplib.SMTPAuthenticationError:
-        logger.error("SMTP authentication failed - check email credentials")
+    except requests.exceptions.Timeout:
+        logger.error("Brevo API request timed out")
         return False
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP error sending email: {e}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Brevo API request failed: {e}")
         return False
     except Exception as e:
         logger.error(f"Unexpected error sending email: {e}")
