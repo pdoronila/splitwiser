@@ -1,5 +1,6 @@
 """Groups router: create, read, update, delete groups."""
 
+import json
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -949,13 +950,23 @@ def get_public_expense_detail(
                     user_name=name
                 ))
 
+            # Deserialize split_details from JSON if present
+            split_details = None
+            if item.split_details:
+                try:
+                    split_details = json.loads(item.split_details)
+                except json.JSONDecodeError:
+                    split_details = None
+
             items_data.append(schemas.ExpenseItemDetail(
                 id=item.id,
                 expense_id=item.expense_id,
                 description=item.description,
                 price=item.price,
                 is_tax_tip=item.is_tax_tip,
-                assignments=assignment_details
+                assignments=assignment_details,
+                split_type=item.split_type or 'EQUAL',
+                split_details=split_details
             ))
 
     return schemas.ExpenseWithSplits(

@@ -54,6 +54,8 @@ class ExpenseItemDetail(BaseModel):
     price: int
     is_tax_tip: bool
     assignments: list[ExpenseItemAssignmentDetail]
+    split_type: Optional[str] = 'EQUAL'
+    split_details: Optional[Dict[str, Dict]] = None  # Deserialized from JSON
 
     class Config:
         from_attributes = True
