@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ExpenseItem, Participant } from '../../types/expense';
 import { shouldUseCompactMode, getAssignmentDisplayText } from '../../utils/participantHelpers';
 
@@ -8,6 +8,8 @@ interface ExpenseItemListProps {
     onToggleAssignment: (itemIdx: number, participant: Participant) => void;
     onRemoveItem: (idx: number) => void;
     onOpenSelector: (idx: number) => void;
+    onChangeSplitType?: (itemIdx: number, splitType: 'EQUAL' | 'EXACT' | 'PERCENT' | 'SHARES') => void;
+    onUpdateSplitDetail?: (itemIdx: number, participantKey: string, details: { amount?: number; percentage?: number; shares?: number }) => void;
     currency?: string; // Make it optional since it's not used
     getParticipantName: (p: Participant) => string;
     currentUserId?: number;
@@ -19,10 +21,13 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
     onToggleAssignment,
     onRemoveItem,
     onOpenSelector,
+    onChangeSplitType,
+    onUpdateSplitDetail,
     getParticipantName,
     currentUserId
 }) => {
     const useCompactMode = shouldUseCompactMode(participants);
+    const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
     if (items.length === 0) {
         return (
@@ -103,6 +108,103 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                     </button>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Split type selector and inputs when multiple people are assigned */}
+                    {item.assignments.length > 1 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                    Split Method:
+                                </span>
+                                <div className="flex gap-1">
+                                    {(['EQUAL', 'EXACT', 'PERCENT', 'SHARES'] as const).map(splitType => (
+                                        <button
+                                            key={splitType}
+                                            type="button"
+                                            onClick={() => onChangeSplitType?.(idx, splitType)}
+                                            className={`px-2 py-1 text-xs rounded ${
+                                                (item.split_type || 'EQUAL') === splitType
+                                                    ? 'bg-teal-500 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                            }`}
+                                        >
+                                            {splitType === 'EQUAL' ? 'Equal' :
+                                             splitType === 'EXACT' ? 'Exact' :
+                                             splitType === 'PERCENT' ? '%' : 'Shares'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Show input fields based on split type */}
+                            {(item.split_type || 'EQUAL') !== 'EQUAL' && (
+                                <div className="space-y-2 mt-3">
+                                    {item.assignments.map(assignment => {
+                                        const participant = participants.find(
+                                            p => p.id === assignment.user_id && p.isGuest === assignment.is_guest
+                                        );
+                                        if (!participant) return null;
+
+                                        const participantKey = participant.isGuest ? `guest_${participant.id}` : `user_${participant.id}`;
+                                        const splitDetail = item.split_details?.[participantKey];
+
+                                        return (
+                                            <div key={participantKey} className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">
+                                                    {getParticipantName(participant)}:
+                                                </span>
+                                                {item.split_type === 'EXACT' && (
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm text-gray-500">$</span>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={(splitDetail?.amount || 0) / 100}
+                                                            onChange={(e) => {
+                                                                const amount = Math.round(parseFloat(e.target.value || '0') * 100);
+                                                                onUpdateSplitDetail?.(idx, participantKey, { amount });
+                                                            }}
+                                                            className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {item.split_type === 'PERCENT' && (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            step="1"
+                                                            min="0"
+                                                            max="100"
+                                                            value={splitDetail?.percentage || 0}
+                                                            onChange={(e) => {
+                                                                const percentage = parseFloat(e.target.value || '0');
+                                                                onUpdateSplitDetail?.(idx, participantKey, { percentage });
+                                                            }}
+                                                            className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                                                        />
+                                                        <span className="text-sm text-gray-500">%</span>
+                                                    </div>
+                                                )}
+                                                {item.split_type === 'SHARES' && (
+                                                    <input
+                                                        type="number"
+                                                        step="1"
+                                                        min="0"
+                                                        value={splitDetail?.shares || 1}
+                                                        onChange={(e) => {
+                                                            const shares = parseInt(e.target.value || '1');
+                                                            onUpdateSplitDetail?.(idx, participantKey, { shares: Math.max(1, shares) });
+                                                        }}
+                                                        className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

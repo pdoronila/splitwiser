@@ -25,16 +25,98 @@ def calculate_itemized_splits(items: list[schemas.ExpenseItemCreate]) -> list[sc
         if not item.assignments:
             continue
 
-        # Equal split among assignees
-        num_assignees = len(item.assignments)
-        share_per_person = item.price // num_assignees
-        remainder = item.price % num_assignees
+        split_type = getattr(item, 'split_type', 'EQUAL')
+        split_details = getattr(item, 'split_details', {}) or {}
 
-        for idx, assignment in enumerate(item.assignments):
-            key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
-            # First assignee gets the remainder cents
-            amount = share_per_person + (1 if idx < remainder else 0)
-            person_subtotals[key] = person_subtotals.get(key, 0) + amount
+        if split_type == 'EQUAL' or len(item.assignments) == 1:
+            # Equal split among assignees (or single assignee gets everything)
+            num_assignees = len(item.assignments)
+            share_per_person = item.price // num_assignees
+            remainder = item.price % num_assignees
+
+            for idx, assignment in enumerate(item.assignments):
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                # First assignee gets the remainder cents
+                amount = share_per_person + (1 if idx < remainder else 0)
+                person_subtotals[key] = person_subtotals.get(key, 0) + amount
+
+        elif split_type == 'EXACT':
+            # Use exact amounts specified
+            for assignment in item.assignments:
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'amount'):
+                    amount = detail.amount or 0
+                elif isinstance(detail, dict):
+                    amount = detail.get('amount', 0)
+                else:
+                    amount = 0
+                person_subtotals[key] = person_subtotals.get(key, 0) + amount
+
+        elif split_type == 'PERCENT':
+            # Use percentages specified
+            remaining = item.price
+            sorted_assignments = sorted(item.assignments, key=lambda a: f"{'guest' if a.is_guest else 'user'}_{a.user_id}")
+
+            for idx, assignment in enumerate(sorted_assignments):
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'percentage'):
+                    percentage = detail.percentage or 0
+                elif isinstance(detail, dict):
+                    percentage = detail.get('percentage', 0)
+                else:
+                    percentage = 0
+
+                if idx == len(sorted_assignments) - 1:
+                    # Last person gets remainder
+                    amount = remaining
+                else:
+                    amount = int(item.price * (percentage / 100))
+                    remaining -= amount
+
+                person_subtotals[key] = person_subtotals.get(key, 0) + amount
+
+        elif split_type == 'SHARES':
+            # Calculate based on shares
+            total_shares = 0
+            for assignment in item.assignments:
+                key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                detail = split_details.get(key, {})
+                # Handle both dict and ItemSplitDetail object
+                if hasattr(detail, 'shares'):
+                    shares = detail.shares or 1
+                elif isinstance(detail, dict):
+                    shares = detail.get('shares', 1)
+                else:
+                    shares = 1
+                total_shares += shares
+
+            if total_shares > 0:
+                remaining = item.price
+                sorted_assignments = sorted(item.assignments, key=lambda a: f"{'guest' if a.is_guest else 'user'}_{a.user_id}")
+
+                for idx, assignment in enumerate(sorted_assignments):
+                    key = f"{'guest' if assignment.is_guest else 'user'}_{assignment.user_id}"
+                    detail = split_details.get(key, {})
+                    # Handle both dict and ItemSplitDetail object
+                    if hasattr(detail, 'shares'):
+                        shares = detail.shares or 1
+                    elif isinstance(detail, dict):
+                        shares = detail.get('shares', 1)
+                    else:
+                        shares = 1
+
+                    if idx == len(sorted_assignments) - 1:
+                        # Last person gets remainder
+                        amount = remaining
+                    else:
+                        amount = int((item.price * shares) / total_shares)
+                        remaining -= amount
+
+                    person_subtotals[key] = person_subtotals.get(key, 0) + amount
 
     # Calculate total of regular items for proportional distribution
     regular_total = sum(person_subtotals.values())
