@@ -42,13 +42,13 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
         isOpen: boolean;
         title: string;
         message: string;
-        type: 'error' | 'warning' | 'info';
-    }>({ isOpen: false, title: '', message: '', type: 'info' });
+        type: 'alert' | 'confirm' | 'success' | 'error';
+    }>({ isOpen: false, title: '', message: '', type: 'alert' });
 
     // Phase 1: Region detection - unified format with id
     const [regions, setRegions] = useState<RegionData[]>([]);
     const [cacheKey, setCacheKey] = useState<string>('');
-    const [ocrImageDimensions, setOcrImageDimensions] = useState<{width: number, height: number} | null>(null);
+    const [ocrImageDimensions, setOcrImageDimensions] = useState<{ width: number, height: number } | null>(null);
 
     // Phase 2: Item extraction
     const [items, setItems] = useState<ItemWithRegion[]>([]);
@@ -283,9 +283,9 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
             // But if the position/size changed significantly, clear the normalized coords
             if (existing && 'normalized_x' in existing) {
                 const positionChanged = Math.abs(existing.x - region.x) > 1 ||
-                                       Math.abs(existing.y - region.y) > 1 ||
-                                       Math.abs(existing.width - region.width) > 1 ||
-                                       Math.abs(existing.height - region.height) > 1;
+                    Math.abs(existing.y - region.y) > 1 ||
+                    Math.abs(existing.width - region.width) > 1 ||
+                    Math.abs(existing.height - region.height) > 1;
 
                 if (positionChanged) {
                     // Position changed - clear normalized coords
@@ -547,7 +547,7 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onItemsDetected, onClos
                 title={alertDialog.title}
                 message={alertDialog.message}
                 type={alertDialog.type}
-                onClose={() => setAlertDialog({ isOpen: false, title: '', message: '', type: 'info' })}
+                onClose={() => setAlertDialog({ isOpen: false, title: '', message: '', type: 'alert' })}
             />
         </div>
     );

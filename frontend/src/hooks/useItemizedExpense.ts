@@ -83,27 +83,28 @@ export const useItemizedExpense = () => {
             const item = updated[itemIdx];
 
             // Initialize split_details with defaults for all assignees when switching to non-EQUAL
-            let newSplitDetails = undefined;
+            let newSplitDetails: Record<string, { amount?: number; percentage?: number; shares?: number }> | undefined = undefined;
             if (splitType !== 'EQUAL' && item.assignments) {
-                newSplitDetails = {};
+                const details: Record<string, { amount?: number; percentage?: number; shares?: number }> = {};
                 item.assignments.forEach(assignment => {
                     const key = assignment.is_guest ? `guest_${assignment.user_id}` : `user_${assignment.user_id}`;
                     // Use existing value if present, otherwise set defaults
                     if (item.split_details && item.split_details[key]) {
-                        newSplitDetails[key] = item.split_details[key];
+                        details[key] = item.split_details[key];
                     } else {
                         // Set default values based on split type
                         if (splitType === 'SHARES') {
-                            newSplitDetails[key] = { shares: 1 };
+                            details[key] = { shares: 1 };
                         } else if (splitType === 'PERCENT') {
                             const equalPercent = Math.floor(100 / item.assignments.length);
-                            newSplitDetails[key] = { percentage: equalPercent };
+                            details[key] = { percentage: equalPercent };
                         } else if (splitType === 'EXACT') {
                             const equalAmount = Math.floor(item.price / item.assignments.length);
-                            newSplitDetails[key] = { amount: equalAmount };
+                            details[key] = { amount: equalAmount };
                         }
                     }
                 });
+                newSplitDetails = details;
             }
 
             updated[itemIdx] = {

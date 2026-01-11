@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { ExpenseItem, Participant } from '../../types/expense';
 import { shouldUseCompactMode, getAssignmentDisplayText } from '../../utils/participantHelpers';
 
@@ -27,7 +27,6 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
     currentUserId
 }) => {
     const useCompactMode = shouldUseCompactMode(participants);
-    const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
     if (items.length === 0) {
         return (
@@ -124,15 +123,14 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                             key={splitType}
                                             type="button"
                                             onClick={() => onChangeSplitType?.(idx, splitType)}
-                                            className={`px-2 py-1 text-xs rounded ${
-                                                (item.split_type || 'EQUAL') === splitType
-                                                    ? 'bg-teal-500 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                            }`}
+                                            className={`px-2 py-1 text-xs rounded ${(item.split_type || 'EQUAL') === splitType
+                                                ? 'bg-teal-500 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                                }`}
                                         >
                                             {splitType === 'EQUAL' ? 'Equal' :
-                                             splitType === 'EXACT' ? 'Exact' :
-                                             splitType === 'PERCENT' ? '%' : 'Shares'}
+                                                splitType === 'EXACT' ? 'Exact' :
+                                                    splitType === 'PERCENT' ? '%' : 'Shares'}
                                         </button>
                                     ))}
                                 </div>

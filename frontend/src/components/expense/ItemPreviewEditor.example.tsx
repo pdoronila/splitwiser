@@ -94,7 +94,8 @@ const ItemPreviewEditorExample: React.FC = () => {
                 region_id: item.region_id,
                 description: item.description,
                 price: item.price,
-                is_tax_tip: false // User can toggle this later
+                is_tax_tip: false, // User can toggle this later
+                split_type: 'EQUAL' as const // Default to equal split
             }));
 
             setItems(extractedItems);
