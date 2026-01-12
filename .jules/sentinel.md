@@ -27,3 +27,8 @@
 **Vulnerability:** The rate limiter used `request.client.host` to identify users. Since the application runs behind an Nginx reverse proxy (on the same machine/container), all requests appeared to come from `127.0.0.1`. This meant all users shared the same rate limit bucket, leading to a self-inflicted Denial of Service where one active user could block everyone else.
 **Learning:** In containerized or proxied environments, `request.client.host` often reflects the proxy's IP, not the actual user. Trusting it blindly effectively disables per-user rate limiting.
 **Prevention:** Always check for `X-Forwarded-For` or `X-Real-IP` headers when deployed behind a proxy. Configure the application middleware (like `ProxyHeadersMiddleware`) or manually handle these headers in security-critical components like rate limiters.
+
+## 2025-02-18 - Missing Rate Limiting on Sensitive Auth Endpoints
+**Vulnerability:** The `/auth/refresh` and `/auth/logout` endpoints lacked rate limiting, allowing potential DoS attacks on the database or token verification logic.
+**Learning:** While login endpoints are usually protected, secondary auth endpoints like refresh token exchange are often overlooked but can be equally expensive (DB lookups, crypto operations).
+**Prevention:** Apply consistent rate limiting to all authentication-related endpoints, not just the primary login route.

@@ -9,7 +9,7 @@ import models
 import schemas
 import auth
 from database import get_db
-from utils.rate_limiter import password_reset_rate_limiter
+from utils.rate_limiter import password_reset_rate_limiter, auth_rate_limiter
 from utils.email import send_password_reset_email, send_password_changed_notification, is_email_configured
 
 
@@ -76,7 +76,7 @@ async def forgot_password(
     }
 
 
-@router.post("/auth/reset-password")
+@router.post("/auth/reset-password", dependencies=[Depends(auth_rate_limiter)])
 async def reset_password(
     request: schemas.ResetPasswordRequest,
     db: Session = Depends(get_db)
