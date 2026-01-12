@@ -203,7 +203,7 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
     }
 
 
-@router.post("/auth/refresh")
+@router.post("/auth/refresh", dependencies=[Depends(auth_rate_limiter)])
 def refresh_access_token(request: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token"""
     token_hash = auth.hash_token(request.refresh_token)
@@ -238,7 +238,7 @@ def refresh_access_token(request: schemas.RefreshTokenRequest, db: Session = Dep
     }
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", dependencies=[Depends(auth_rate_limiter)])
 def logout(request: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
     """Revoke a refresh token (logout)"""
     token_hash = auth.hash_token(request.refresh_token)
