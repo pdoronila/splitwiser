@@ -40,6 +40,74 @@ def verify_friendship(db: Session, current_user_id: int, friend_id: int) -> mode
     return friend
 
 
+def get_friend_expense_context(
+    db: Session, 
+    current_user_id: int, 
+    friend_id: int
+) -> tuple[set, set, list]:
+    """
+    Get the context needed for friend expense/balance queries.
+    
+    Finds shared groups and builds ID sets for both users including their 
+    managed guests/members. Consolidates queries for better performance.
+    
+    Returns:
+        Tuple of (current_user_ids, friend_ids, shared_group_ids)
+        where each ID set contains (user_id, is_guest) tuples
+    """
+    # Find shared groups - single query with join
+    shared_group_ids = db.query(models.GroupMember.group_id).filter(
+        models.GroupMember.user_id == current_user_id
+    ).intersect(
+        db.query(models.GroupMember.group_id).filter(
+            models.GroupMember.user_id == friend_id
+        )
+    ).all()
+    shared_group_ids = [g[0] for g in shared_group_ids]
+    
+    # Build the ID sets for each side
+    current_user_ids = {(current_user_id, False)}
+    friend_ids_set = {(friend_id, False)}
+    
+    if not shared_group_ids:
+        return current_user_ids, friend_ids_set, shared_group_ids
+    
+    # Consolidated query for managed guests (both users in one query)
+    managed_guests = db.query(models.GuestMember).filter(
+        models.GuestMember.group_id.in_(shared_group_ids),
+        models.GuestMember.managed_by_type == 'user',
+        models.GuestMember.claimed_by_id == None,
+        or_(
+            models.GuestMember.managed_by_id == current_user_id,
+            models.GuestMember.managed_by_id == friend_id
+        )
+    ).all()
+    
+    for guest in managed_guests:
+        if guest.managed_by_id == current_user_id:
+            current_user_ids.add((guest.id, True))
+        else:
+            friend_ids_set.add((guest.id, True))
+    
+    # Consolidated query for managed members (both users in one query)
+    managed_members = db.query(models.GroupMember).filter(
+        models.GroupMember.group_id.in_(shared_group_ids),
+        models.GroupMember.managed_by_type == 'user',
+        or_(
+            models.GroupMember.managed_by_id == current_user_id,
+            models.GroupMember.managed_by_id == friend_id
+        )
+    ).all()
+    
+    for member in managed_members:
+        if member.managed_by_id == current_user_id:
+            current_user_ids.add((member.user_id, False))
+        else:
+            friend_ids_set.add((member.user_id, False))
+    
+    return current_user_ids, friend_ids_set, shared_group_ids
+
+
 @router.post("/request", response_model=schemas.FriendRequestResponse)
 async def send_friend_request(
     request: schemas.FriendRequestCreate,
@@ -413,66 +481,11 @@ def get_friend_expenses(
     Also includes expenses where managed members/guests are involved.
     """
     friend = verify_friendship(db, current_user.id, friend_id)
-
-    # Find groups where both users are members
-    current_user_groups = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.user_id == current_user.id
-    ).subquery()
     
-    friend_groups = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.user_id == friend_id
-    ).subquery()
-    
-    shared_group_ids = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.group_id.in_(current_user_groups),
-        models.GroupMember.group_id.in_(friend_groups)
-    ).distinct().all()
-    shared_group_ids = [g[0] for g in shared_group_ids]
-
-    # Build the set of IDs that represent "current user's side"
-    current_user_ids = {(current_user.id, False)}  # (id, is_guest)
-    
-    # Build the set of IDs that represent "friend's side"
-    friend_ids_set = {(friend_id, False)}  # (id, is_guest)
-
-    if shared_group_ids:
-        # Get guests managed by current user in shared groups
-        current_user_managed_guests = db.query(models.GuestMember).filter(
-            models.GuestMember.group_id.in_(shared_group_ids),
-            models.GuestMember.managed_by_id == current_user.id,
-            models.GuestMember.managed_by_type == 'user',
-            models.GuestMember.claimed_by_id == None
-        ).all()
-        for guest in current_user_managed_guests:
-            current_user_ids.add((guest.id, True))
-        
-        # Get members managed by current user in shared groups
-        current_user_managed_members = db.query(models.GroupMember).filter(
-            models.GroupMember.group_id.in_(shared_group_ids),
-            models.GroupMember.managed_by_id == current_user.id,
-            models.GroupMember.managed_by_type == 'user'
-        ).all()
-        for member in current_user_managed_members:
-            current_user_ids.add((member.user_id, False))
-        
-        # Get guests managed by friend in shared groups
-        friend_managed_guests = db.query(models.GuestMember).filter(
-            models.GuestMember.group_id.in_(shared_group_ids),
-            models.GuestMember.managed_by_id == friend_id,
-            models.GuestMember.managed_by_type == 'user',
-            models.GuestMember.claimed_by_id == None
-        ).all()
-        for guest in friend_managed_guests:
-            friend_ids_set.add((guest.id, True))
-        
-        # Get members managed by friend in shared groups
-        friend_managed_members = db.query(models.GroupMember).filter(
-            models.GroupMember.group_id.in_(shared_group_ids),
-            models.GroupMember.managed_by_id == friend_id,
-            models.GroupMember.managed_by_type == 'user'
-        ).all()
-        for member in friend_managed_members:
-            friend_ids_set.add((member.user_id, False))
+    # Use helper to get ID sets with managed members consolidated
+    current_user_ids, friend_ids_set, _ = get_friend_expense_context(
+        db, current_user.id, friend_id
+    )
 
     # Build subqueries for expenses involving each side
     current_side_conditions = []
@@ -733,67 +746,11 @@ def get_friend_balance(
     Includes balances from managed members/guests in shared groups.
     """
     friend = verify_friendship(db, current_user.id, friend_id)
-
-    # Find groups where both users are members
-    current_user_groups = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.user_id == current_user.id
-    ).subquery()
     
-    friend_groups = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.user_id == friend_id
-    ).subquery()
-    
-    shared_group_ids = db.query(models.GroupMember.group_id).filter(
-        models.GroupMember.group_id.in_(current_user_groups),
-        models.GroupMember.group_id.in_(friend_groups)
-    ).distinct().all()
-    shared_group_ids = [g[0] for g in shared_group_ids]
-
-    # Build the set of IDs that represent "current user's side"
-    # (current user + guests/members they manage in shared groups)
-    current_user_ids = {(current_user.id, False)}  # (id, is_guest)
-    
-    # Build the set of IDs that represent "friend's side"
-    friend_ids = {(friend_id, False)}  # (id, is_guest)
-
-    if shared_group_ids:
-        # Get guests managed by current user in shared groups
-        current_user_managed_guests = db.query(models.GuestMember).filter(
-            models.GuestMember.group_id.in_(shared_group_ids),
-            models.GuestMember.managed_by_id == current_user.id,
-            models.GuestMember.managed_by_type == 'user',
-            models.GuestMember.claimed_by_id == None  # Only unclaimed guests
-        ).all()
-        for guest in current_user_managed_guests:
-            current_user_ids.add((guest.id, True))
-        
-        # Get members managed by current user in shared groups
-        current_user_managed_members = db.query(models.GroupMember).filter(
-            models.GroupMember.group_id.in_(shared_group_ids),
-            models.GroupMember.managed_by_id == current_user.id,
-            models.GroupMember.managed_by_type == 'user'
-        ).all()
-        for member in current_user_managed_members:
-            current_user_ids.add((member.user_id, False))
-        
-        # Get guests managed by friend in shared groups
-        friend_managed_guests = db.query(models.GuestMember).filter(
-            models.GuestMember.group_id.in_(shared_group_ids),
-            models.GuestMember.managed_by_id == friend_id,
-            models.GuestMember.managed_by_type == 'user',
-            models.GuestMember.claimed_by_id == None
-        ).all()
-        for guest in friend_managed_guests:
-            friend_ids.add((guest.id, True))
-        
-        # Get members managed by friend in shared groups
-        friend_managed_members = db.query(models.GroupMember).filter(
-            models.GroupMember.group_id.in_(shared_group_ids),
-            models.GroupMember.managed_by_id == friend_id,
-            models.GroupMember.managed_by_type == 'user'
-        ).all()
-        for member in friend_managed_members:
-            friend_ids.add((member.user_id, False))
+    # Use helper to get ID sets with managed members consolidated
+    current_user_ids, friend_ids, _ = get_friend_expense_context(
+        db, current_user.id, friend_id
+    )
 
     # Build subqueries for expenses involving each side
     # Current user side: expenses where any of current_user_ids is in splits
