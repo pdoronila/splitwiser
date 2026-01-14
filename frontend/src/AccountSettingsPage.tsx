@@ -11,6 +11,7 @@ interface UserProfile {
   email_verified: boolean;
   password_changed_at: string | null;
   last_login_at: string | null;
+  default_currency: string;
 }
 
 interface FriendRequest {
@@ -33,6 +34,7 @@ const AccountSettingsPage = () => {
   // Profile update state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
   const [isProfileLoading, setIsProfileLoading] = useState(false);
@@ -137,6 +139,7 @@ const AccountSettingsPage = () => {
       setProfile(data);
       setFullName(data.full_name || '');
       setEmail(data.email);
+      setDefaultCurrency(data.default_currency || 'USD');
     } catch (error) {
       console.error('Failed to load profile:', error);
     } finally {
@@ -151,7 +154,7 @@ const AccountSettingsPage = () => {
     setIsProfileLoading(true);
 
     try {
-      const updates: { full_name?: string; email?: string } = {};
+      const updates: { full_name?: string; email?: string; default_currency?: string } = {};
 
       if (fullName !== profile?.full_name) {
         updates.full_name = fullName;
@@ -159,6 +162,10 @@ const AccountSettingsPage = () => {
 
       if (email !== profile?.email) {
         updates.email = email;
+      }
+
+      if (defaultCurrency !== profile?.default_currency) {
+        updates.default_currency = defaultCurrency;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -312,6 +319,30 @@ const AccountSettingsPage = () => {
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Changing your email will require verification
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="defaultCurrency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Default Currency
+                </label>
+                <select
+                  id="defaultCurrency"
+                  value={defaultCurrency}
+                  onChange={(e) => setDefaultCurrency(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={isProfileLoading}
+                >
+                  <option value="USD">$ USD - US Dollar</option>
+                  <option value="EUR">€ EUR - Euro</option>
+                  <option value="GBP">£ GBP - British Pound</option>
+                  <option value="JPY">¥ JPY - Japanese Yen</option>
+                  <option value="CAD">CA$ CAD - Canadian Dollar</option>
+                  <option value="CNY">¥ CNY - Chinese Yuan</option>
+                  <option value="HKD">HK$ HKD - Hong Kong Dollar</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Balances on Dashboard will be displayed in this currency
                 </p>
               </div>
 

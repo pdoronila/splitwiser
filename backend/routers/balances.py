@@ -294,8 +294,15 @@ def get_group_balances(
 @router.get("/balances", response_model=dict[str, list[schemas.Balance]])
 def get_balances(
     current_user: Annotated[models.User, Depends(get_current_user)], 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    convert_to: str = None  # Optional: convert all group balances from their default currencies to this currency
 ):
+    """
+    Get user's balances across all groups and 1-to-1 IOUs.
+    
+    By default, group balances are consolidated to each group's default currency.
+    If convert_to is provided, all group balances are converted to that currency.
+    """
     # Money user paid (only non-guest expenses where I'm the payer)
     paid_expenses = db.query(models.Expense).filter(
         models.Expense.payer_id == current_user.id,
@@ -311,8 +318,8 @@ def get_balances(
     # Individual user balances (for 1-to-1 IOUs): (user_id, currency) -> amount
     user_balances = {}
     
-    # Group balances (for group expenses): (group_id, currency) -> amount
-    group_balances = {}
+    # Group balances: group_id -> {currency -> amount} (track amounts per currency within group)
+    group_currency_balances = {}
 
     # Optimization: Batch fetch all splits for paid_expenses
     paid_expense_ids = [e.id for e in paid_expenses]
@@ -352,6 +359,43 @@ def get_balances(
         guests = db.query(models.GuestMember).filter(models.GuestMember.id.in_(guest_ids)).all()
         guests_map = {g.id: g for g in guests}
 
+    # Collect all group_ids we need
+    all_group_ids = set()
+    for expense in paid_expenses:
+        if expense.group_id:
+            all_group_ids.add(expense.group_id)
+    for split in my_splits:
+        expense = expenses_for_my_splits.get(split.expense_id)
+        if expense and expense.group_id:
+            all_group_ids.add(expense.group_id)
+    for guest in guests_map.values():
+        all_group_ids.add(guest.group_id)
+
+    # Batch fetch groups to get their default currencies
+    groups_map = {}
+    if all_group_ids:
+        groups = db.query(models.Group).filter(models.Group.id.in_(all_group_ids)).all()
+        groups_map = {g.id: g for g in groups}
+
+    # Get exchange rates for currency conversion
+    exchange_rates = get_current_exchange_rates()
+
+    def convert_amount(amount: float, from_currency: str, to_currency: str) -> float:
+        """Convert amount from from_currency to to_currency."""
+        if from_currency == to_currency:
+            return amount
+        # Convert to USD first, then to target currency
+        from_rate = exchange_rates.get(from_currency, 1.0)
+        to_rate = exchange_rates.get(to_currency, 1.0)
+        amount_in_usd = amount / from_rate
+        return amount_in_usd * to_rate
+
+    def add_to_group_balance(group_id: int, currency: str, amount: float):
+        """Add amount to group balance, tracking by currency."""
+        if group_id not in group_currency_balances:
+            group_currency_balances[group_id] = {}
+        group_currency_balances[group_id][currency] = group_currency_balances[group_id].get(currency, 0) + amount
+
     # Analyze expenses I paid
     for expense in paid_expenses:
         splits = splits_by_expense.get(expense.id, [])
@@ -361,14 +405,12 @@ def get_balances(
 
             # Someone else owes me 'split.amount_owed'
             if expense.group_id:
-                key = (expense.group_id, expense.currency)
-                group_balances[key] = group_balances.get(key, 0) + split.amount_owed
+                add_to_group_balance(expense.group_id, expense.currency, split.amount_owed)
             else:
                 if split.is_guest:
                     guest = guests_map.get(split.user_id)
                     if guest:
-                        key = (guest.group_id, expense.currency)
-                        group_balances[key] = group_balances.get(key, 0) + split.amount_owed
+                        add_to_group_balance(guest.group_id, expense.currency, split.amount_owed)
                 else:
                     key = (split.user_id, expense.currency)
                     user_balances[key] = user_balances.get(key, 0) + split.amount_owed
@@ -384,14 +426,12 @@ def get_balances(
 
         # I owe the payer 'split.amount_owed'
         if expense.group_id:
-            key = (expense.group_id, expense.currency)
-            group_balances[key] = group_balances.get(key, 0) - split.amount_owed
+            add_to_group_balance(expense.group_id, expense.currency, -split.amount_owed)
         else:
             if expense.payer_is_guest:
                 guest = guests_map.get(expense.payer_id)
                 if guest:
-                    key = (guest.group_id, expense.currency)
-                    group_balances[key] = group_balances.get(key, 0) - split.amount_owed
+                    add_to_group_balance(guest.group_id, expense.currency, -split.amount_owed)
             else:
                 key = (expense.payer_id, expense.currency)
                 user_balances[key] = user_balances.get(key, 0) - split.amount_owed
@@ -404,13 +444,6 @@ def get_balances(
     if user_ids:
         users = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
         users_map = {u.id: u for u in users}
-
-    # Optimization: Batch fetch groups for balances
-    group_ids = {gid for gid, _ in group_balances.keys()}
-    groups_map = {}
-    if group_ids:
-        groups = db.query(models.Group).filter(models.Group.id.in_(group_ids)).all()
-        groups_map = {g.id: g for g in groups}
 
     # Add individual user balances (1-to-1 IOUs only)
     for (uid, currency), amount in user_balances.items():
@@ -425,16 +458,26 @@ def get_balances(
                 is_guest=False
             ))
 
-    # Add consolidated group balances
-    for (group_id, currency), amount in group_balances.items():
-        if amount != 0:
-            group = groups_map.get(group_id)
-            group_name = group.name if group else f"Group {group_id}"
+    # Consolidate group balances to group's default currency (or convert_to if specified)
+    for group_id, currency_amounts in group_currency_balances.items():
+        group = groups_map.get(group_id)
+        group_name = group.name if group else f"Group {group_id}"
+        group_default_currency = group.default_currency if group else "USD"
+        
+        # Determine target currency: use convert_to if provided, else group's default
+        target_currency = convert_to if convert_to else group_default_currency
+        
+        # Consolidate all currency amounts to target currency
+        total_in_target = 0.0
+        for currency, amount in currency_amounts.items():
+            total_in_target += convert_amount(amount, currency, target_currency)
+        
+        if abs(total_in_target) > 0.01:  # Filter out near-zero balances
             result["balances"].append(schemas.Balance(
                 user_id=0,
                 full_name=group_name,
-                amount=amount,
-                currency=currency,
+                amount=total_in_target,
+                currency=target_currency,
                 is_guest=True,
                 group_name=group_name,
                 group_id=group_id

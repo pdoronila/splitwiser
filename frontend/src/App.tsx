@@ -23,7 +23,6 @@ import type { Balance } from './types/balance';
 import { formatMoney } from './utils/formatters';
 import { friendsApi, groupsApi, balancesApi } from './services/api';
 import { usePageTitle } from './hooks/usePageTitle';
-import { getApiUrl } from './api';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -37,6 +36,7 @@ const Dashboard = () => {
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showMyCurrency, setShowMyCurrency] = useState(false); // Toggle: false = group currencies, true = my currency
 
   // Set dynamic page title
   usePageTitle('Dashboard');
@@ -65,14 +65,23 @@ const Dashboard = () => {
     }
   };
 
-  const fetchBalances = async () => {
+  const fetchBalances = async (convertToMyCurrency: boolean = showMyCurrency) => {
     try {
-      const data = await balancesApi.getAll();
+      const userCurrency = user?.default_currency || 'USD';
+      const convertTo = convertToMyCurrency ? userCurrency : undefined;
+      const data = await balancesApi.getAll(convertTo);
       setBalances(data.balances || []);
     } catch (error) {
       console.error('Failed to fetch balances:', error);
     }
   };
+
+  // Re-fetch balances when toggle changes
+  useEffect(() => {
+    if (user) {
+      fetchBalances(showMyCurrency);
+    }
+  }, [showMyCurrency, user?.default_currency]);
 
   const handleAddFriend = () => {
     fetchFriends();
@@ -86,29 +95,16 @@ const Dashboard = () => {
     fetchBalances();
   };
 
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
-
-  useEffect(() => {
-    fetch(getApiUrl('exchange_rates'))
-      .then(res => res.json())
-      .then(data => setExchangeRates(data));
-  }, []);
-
   const calculateTotalBalance = () => {
-    // Don't calculate if exchange rates haven't loaded yet
-    if (!exchangeRates) return 0;
+    // Only calculate total when in "My Currency" mode
+    if (!showMyCurrency) return null;
 
-    // Convert all to USD for display
-    let totalUSD = 0;
-    balances.forEach(b => {
-      const rate = exchangeRates[b.currency] || 1;
-      // If currency is USD, rate is 1. If EUR, rate is 0.92 (1 USD = 0.92 EUR) -> Amount in EUR / 0.92 = Amount in USD
-      // Wait, rate usually means 1 Base = X Quote. If Base=USD, Quote=EUR (0.92).
-      // Then EUR Amount / 0.92 = USD Amount.
-      totalUSD += b.amount / rate;
-    });
-    return totalUSD;
+    // All balances are already in user's currency when showMyCurrency is true
+    return balances.reduce((total, b) => total + b.amount, 0);
   };
+
+  // Get user's display currency for formatting
+  const displayCurrency = user?.default_currency || 'USD';
 
   // formatMoney now imported from utils
 
@@ -318,12 +314,31 @@ const Dashboard = () => {
 
             {/* Right Column - Balance Summary */}
             <div className="lg:flex-1 flex flex-col gap-4 lg:gap-5">
-              {/* Total Balance Card */}
+              {/* Currency Toggle & Total */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 lg:p-5">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Total Balance</h3>
-                <div className={`text-3xl lg:text-4xl font-bold ${calculateTotalBalance() >= 0 ? 'text-teal-500' : 'text-red-500'}`}>
-                  {formatMoney(calculateTotalBalance(), 'USD')}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance View</h3>
+                  <button
+                    onClick={() => setShowMyCurrency(!showMyCurrency)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${showMyCurrency
+                      ? 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}
+                  >
+                    {showMyCurrency ? `Show in ${displayCurrency}` : 'Group Currencies'}
+                  </button>
                 </div>
+                {showMyCurrency && (
+                  <>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Total Balance</p>
+                    <div className={`text-3xl lg:text-4xl font-bold ${(calculateTotalBalance() ?? 0) >= 0 ? 'text-teal-500' : 'text-red-500'}`}>
+                      {formatMoney(calculateTotalBalance() ?? 0, displayCurrency)}
+                    </div>
+                  </>
+                )}
+                {!showMyCurrency && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Showing each group in its own currency</p>
+                )}
               </div>
 
               {/* You Owe Card */}

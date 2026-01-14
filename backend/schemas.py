@@ -343,6 +343,17 @@ class ProfileUpdateRequest(BaseModel):
     """Request to update user profile"""
     full_name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
+    default_currency: Optional[str] = Field(None, min_length=3, max_length=3)
+
+    @field_validator('default_currency')
+    @classmethod
+    def validate_currency(cls, v):
+        if v is None:
+            return v
+        valid_currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'CNY', 'HKD']
+        if v not in valid_currencies:
+            raise ValueError(f'Currency must be one of {valid_currencies}')
+        return v
 
 
 class VerifyEmailRequest(BaseModel):
@@ -359,6 +370,7 @@ class UserProfile(BaseModel):
     email_verified: bool
     password_changed_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
+    default_currency: str = "USD"
 
     class Config:
         from_attributes = True

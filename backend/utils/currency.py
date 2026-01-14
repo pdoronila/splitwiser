@@ -158,13 +158,31 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> flo
 
     return amount_in_usd * EXCHANGE_RATES[to_currency]
 
+# Cache for exchange rates with TTL
+_exchange_rate_cache = {
+    "rates": None,
+    "fetched_at": None
+}
+_CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+
 
 def get_current_exchange_rates() -> dict:
     """
     Get current exchange rates from Frankfurter API (free, no key required).
     Falls back to static rates if API is unavailable.
     All rates are relative to USD (base currency).
+    
+    Results are cached for 15 minutes to avoid excessive API calls.
     """
+    import time
+    
+    # Check if we have a valid cached value
+    if (_exchange_rate_cache["rates"] is not None and 
+        _exchange_rate_cache["fetched_at"] is not None):
+        age = time.time() - _exchange_rate_cache["fetched_at"]
+        if age < _CACHE_TTL_SECONDS:
+            return _exchange_rate_cache["rates"]
+    
     try:
         # Fetch latest rates from Frankfurter API with USD as base
         url = "https://api.frankfurter.app/latest"
@@ -182,6 +200,11 @@ def get_current_exchange_rates() -> dict:
             # Add USD explicitly since it's the base
             rates = {"USD": 1.0}
             rates.update(data["rates"])
+            
+            # Cache the result
+            _exchange_rate_cache["rates"] = rates
+            _exchange_rate_cache["fetched_at"] = time.time()
+            
             return rates
 
         # If API response is invalid, use fallback

@@ -13,6 +13,7 @@ class User(Base):
     password_changed_at = Column(DateTime, nullable=True)
     email_verified = Column(Boolean, default=False)
     last_login_at = Column(DateTime, nullable=True)
+    default_currency = Column(String, default="USD")
 
 class Group(Base):
     __tablename__ = "groups"

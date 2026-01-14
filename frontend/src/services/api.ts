@@ -402,8 +402,9 @@ export const expensesApi = {
 // ============================================================================
 
 export const balancesApi = {
-    getAll: async () => {
-        const response = await apiFetch('/balances');
+    getAll: async (convertTo?: string) => {
+        const url = convertTo ? `/balances?convert_to=${convertTo}` : '/balances';
+        const response = await apiFetch(url);
         if (!response.ok) throw new Error('Failed to fetch balances');
         return response.json();
     },
@@ -460,7 +461,7 @@ export const profileApi = {
         return response.json();
     },
 
-    updateProfile: async (data: { full_name?: string; email?: string }) => {
+    updateProfile: async (data: { full_name?: string; email?: string; default_currency?: string }) => {
         const response = await apiFetch('/users/me/profile', {
             method: 'PUT',
             body: JSON.stringify(data),

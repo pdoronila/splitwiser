@@ -49,6 +49,11 @@ async def update_profile(
         current_user.full_name = profile_data.full_name
         updated_fields.append("full_name")
 
+    # Update default currency if provided
+    if profile_data.default_currency is not None:
+        current_user.default_currency = profile_data.default_currency
+        updated_fields.append("default_currency")
+
     # Handle email change with verification
     if profile_data.email is not None:
         # Check if new email is different
