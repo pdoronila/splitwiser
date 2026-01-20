@@ -17,9 +17,9 @@ import type {
     Participant,
     SplitType
 } from './types/expense';
+import type { GuestMember } from './types/group';
 import {
-    getParticipantName as getParticipantNameUtil,
-    getParticipantKey
+    getParticipantName as getParticipantNameUtil
 } from './utils/participantHelpers';
 import {
     calculateEqualSplit,
@@ -32,6 +32,7 @@ import { formatDateForInput } from './utils/formatters';
 import { formatCurrencyDisplay } from './utils/currencyHelpers';
 import { offlineExpensesApi } from './services/offlineApi';
 import { useSync } from './contexts/SyncContext';
+import { groupsApi } from './services/api';
 
 interface AddExpenseModalProps {
     isOpen: boolean;
@@ -74,6 +75,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [unknownGuest, setUnknownGuest] = useState<GuestMember | null>(null);
     const [alertDialog, setAlertDialog] = useState<{
         isOpen: boolean;
         title: string;
@@ -100,6 +102,23 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         }
     }, [selectedGroup]);
 
+    // Fetch Unknown guest when using ITEMIZED split with a group
+    useEffect(() => {
+        const fetchUnknownGuest = async () => {
+            if (splitType === 'ITEMIZED' && selectedGroupId) {
+                try {
+                    const guest = await groupsApi.getOrCreateUnknownGuest(selectedGroupId);
+                    setUnknownGuest(guest);
+                } catch (error) {
+                    console.error('Failed to fetch Unknown guest:', error);
+                }
+            } else {
+                setUnknownGuest(null);
+            }
+        };
+        fetchUnknownGuest();
+    }, [splitType, selectedGroupId]);
+
     const resetForm = () => {
         setDescription('');
         setAmount('');
@@ -125,6 +144,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         itemizedExpense.setTaxAmount('');
         itemizedExpense.setTipAmount('');
         setSplitDetails({});
+        setUnknownGuest(null);
     };
 
     // Reset form when modal opens
@@ -186,6 +206,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 participants.push({ id: guest.id, name: guest.name, isGuest: true });
             }
         });
+
+        // Add Unassigned guest for itemized expenses (allows items to be claimed later)
+        if (splitType === 'ITEMIZED' && unknownGuest) {
+            participants.push({ id: unknownGuest.id, name: 'Unassigned', isGuest: true });
+        }
 
         return participants;
     };
@@ -265,109 +290,61 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     const key = a.is_guest ? `guest_${a.user_id}` : `user_${a.user_id}`;
                     participantsWithItems.add(key);
                 });
-            });
-
-            const participantsWithoutItems = allParticipants.filter(p => {
-                const key = getParticipantKey(p);
-                return !participantsWithItems.has(key);
-            });
-
-            // Helper function to finalize itemized expense
-            const finalizeItemizedExpense = async () => {
-                setIsSubmitting(true);
-                try {
-                    // Map items to include split_type and properly formatted split_details
-                    const allItems = itemizedExpense.itemizedItems.map(item => ({
-                        description: item.description,
-                        price: item.price,
-                        is_tax_tip: item.is_tax_tip,
-                        assignments: item.assignments,
-                        split_type: item.split_type || 'EQUAL',
-                        split_details: item.split_details || undefined
-                    }));
-
-                    const tax = Math.round(parseFloat(itemizedExpense.taxAmount || '0') * 100);
-                    const tip = Math.round(parseFloat(itemizedExpense.tipAmount || '0') * 100);
-
-                    // Add Tax as a separate item if present
-                    if (tax > 0) {
-                        allItems.push({
-                            description: 'Tax',
-                            price: tax,
-                            is_tax_tip: true,
-                            assignments: [],
-                            split_type: 'EQUAL',
-                            split_details: undefined
-                        });
-                    }
-
-                    // Add Tip as a separate item if present
-                    if (tip > 0) {
-                        allItems.push({
-                            description: 'Tip',
-                            price: tip,
-                            is_tax_tip: true,
-                            assignments: [],
-                            split_type: 'EQUAL',
-                            split_details: undefined
-                        });
-                    }
-
-                    const itemsTotal = allItems.reduce((sum, item) => sum + item.price, 0);
-
-                    const itemizedPayload = {
-                        description,
-                        amount: itemsTotal,
-                        currency,
-                        date: expenseDate,
-                        payer_id: payerId,
-                        payer_is_guest: payerIsGuest,
-                        group_id: selectedGroupId,
-                        split_type: 'ITEMIZED',
-                        items: allItems,
-                        splits: [],
-                        icon: selectedIcon,
-                        receipt_image_path: receiptImagePath,
-                        notes: notes
-                    };
-
-                    const result = await offlineExpensesApi.create(itemizedPayload);
-
-                    if (result.success) {
-                        recordCurrencyUsage(currency);
-                        if (result.offline) {
-                            console.log('Expense created offline and queued for sync');
-                        }
-                        onExpenseAdded();
-                        onClose();
-                        resetForm();
-                    } else {
-                        setAlertDialog({
-                            isOpen: true,
-                            title: 'Error',
-                            message: 'Failed to add expense',
-                            type: 'error'
-                        });
-                    }
-                } finally {
-                    setIsSubmitting(false);
-                }
-            };
-
-            // Check for participants without items
-            if (participantsWithoutItems.length > 0) {
-                const names = participantsWithoutItems.map(p => p.name).join(', ');
-                setAlertDialog({
-                    isOpen: true,
-                    title: 'Warning',
-                    message: `The following participant(s) have no items assigned and will not be included in this expense:\n\n${names}\n\nDo you want to continue?`,
-                    type: 'confirm',
-                    onConfirm: finalizeItemizedExpense
-                });
-                return;
             }
 
-            await finalizeItemizedExpense();
+            // Add Tip as a separate item if present
+            if (tip > 0) {
+                allItems.push({
+                    description: 'Tip',
+                    price: tip,
+                    is_tax_tip: true,
+                    assignments: [],
+                    split_type: 'EQUAL',
+                    split_details: undefined
+                });
+            }
+
+            const itemsTotal = allItems.reduce((sum, item) => sum + item.price, 0);
+
+            const itemizedPayload = {
+                description,
+                amount: itemsTotal,
+                currency,
+                date: expenseDate,
+                payer_id: payerId,
+                payer_is_guest: payerIsGuest,
+                group_id: selectedGroupId,
+                split_type: 'ITEMIZED',
+                items: allItems,
+                splits: [],
+                icon: selectedIcon,
+                receipt_image_path: receiptImagePath,
+                notes: notes
+            };
+
+            setIsSubmitting(true);
+            try {
+                const result = await offlineExpensesApi.create(itemizedPayload);
+
+                if (result.success) {
+                    recordCurrencyUsage(currency);
+                    if (result.offline) {
+                        console.log('Expense created offline and queued for sync');
+                    }
+                    onExpenseAdded();
+                    onClose();
+                    resetForm();
+                } else {
+                    setAlertDialog({
+                        isOpen: true,
+                        title: 'Error',
+                        message: 'Failed to add expense',
+                        type: 'error'
+                    });
+                }
+            } finally {
+                setIsSubmitting(false);
+            }
             return;
         }
 

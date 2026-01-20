@@ -60,6 +60,7 @@ export interface ExpenseWithSplits {
     receipt_image_path?: string | null;
     notes?: string | null;
     exchange_rate?: string | null;
+    has_unknown_assignments?: boolean;  // True if expense has items assigned to Unknown
 }
 
 export type SplitType = 'EQUAL' | 'EXACT' | 'PERCENT' | 'SHARES' | 'ITEMIZED';

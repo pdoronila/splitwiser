@@ -498,8 +498,8 @@ def delete_expense(
 
 @router.get("/groups/{group_id}/expenses", response_model=list[schemas.ExpenseWithSplits])
 def get_group_expenses(
-    group_id: int, 
-    current_user: Annotated[models.User, Depends(get_current_user)], 
+    group_id: int,
+    current_user: Annotated[models.User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
     get_group_or_404(db, group_id)
@@ -514,6 +514,39 @@ def get_group_expenses(
         return []
 
     expense_ids = [e.id for e in expenses]
+
+    # Check for Unknown guest in this group (for detecting incomplete expenses)
+    unknown_guest = db.query(models.GuestMember).filter(
+        models.GuestMember.group_id == group_id,
+        models.GuestMember.is_unknown_placeholder == True
+    ).first()
+    unknown_guest_id = unknown_guest.id if unknown_guest else None
+
+    # For ITEMIZED expenses, check which ones have Unknown assignments
+    itemized_expense_ids = [e.id for e in expenses if e.split_type == "ITEMIZED"]
+    expenses_with_unknown = set()
+
+    if itemized_expense_ids and unknown_guest_id:
+        # Get all items for itemized expenses
+        items = db.query(models.ExpenseItem).filter(
+            models.ExpenseItem.expense_id.in_(itemized_expense_ids)
+        ).all()
+        item_ids = [i.id for i in items]
+
+        if item_ids:
+            # Check for assignments to Unknown guest
+            unknown_assignments = db.query(models.ExpenseItemAssignment).filter(
+                models.ExpenseItemAssignment.expense_item_id.in_(item_ids),
+                models.ExpenseItemAssignment.user_id == unknown_guest_id,
+                models.ExpenseItemAssignment.is_guest == True
+            ).all()
+
+            # Map item_id to expense_id
+            item_to_expense = {i.id: i.expense_id for i in items}
+            for assignment in unknown_assignments:
+                expense_id = item_to_expense.get(assignment.expense_item_id)
+                if expense_id:
+                    expenses_with_unknown.add(expense_id)
 
     # 2. Fetch all splits for these expenses
     all_splits = db.query(models.ExpenseSplit).filter(
@@ -605,7 +638,8 @@ def get_group_expenses(
             "items": [],
             "exchange_rate": expense.exchange_rate,
             "icon": expense.icon,
-            "notes": expense.notes
+            "notes": expense.notes,
+            "has_unknown_assignments": expense.id in expenses_with_unknown
         }
         result.append(expense_dict)
 
