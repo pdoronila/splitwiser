@@ -17,6 +17,7 @@ import type {
     Participant,
     SplitType
 } from './types/expense';
+import type { GuestMember } from './types/group';
 import {
     getParticipantName as getParticipantNameUtil,
     getParticipantKey
@@ -32,6 +33,7 @@ import { formatDateForInput } from './utils/formatters';
 import { formatCurrencyDisplay } from './utils/currencyHelpers';
 import { offlineExpensesApi } from './services/offlineApi';
 import { useSync } from './contexts/SyncContext';
+import { groupsApi } from './services/api';
 
 interface AddExpenseModalProps {
     isOpen: boolean;
@@ -74,6 +76,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [unknownGuest, setUnknownGuest] = useState<GuestMember | null>(null);
     const [alertDialog, setAlertDialog] = useState<{
         isOpen: boolean;
         title: string;
@@ -100,6 +103,23 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         }
     }, [selectedGroup]);
 
+    // Fetch Unknown guest when using ITEMIZED split with a group
+    useEffect(() => {
+        const fetchUnknownGuest = async () => {
+            if (splitType === 'ITEMIZED' && selectedGroupId) {
+                try {
+                    const guest = await groupsApi.getOrCreateUnknownGuest(selectedGroupId);
+                    setUnknownGuest(guest);
+                } catch (error) {
+                    console.error('Failed to fetch Unknown guest:', error);
+                }
+            } else {
+                setUnknownGuest(null);
+            }
+        };
+        fetchUnknownGuest();
+    }, [splitType, selectedGroupId]);
+
     const resetForm = () => {
         setDescription('');
         setAmount('');
@@ -125,6 +145,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         itemizedExpense.setTaxAmount('');
         itemizedExpense.setTipAmount('');
         setSplitDetails({});
+        setUnknownGuest(null);
     };
 
     // Reset form when modal opens
@@ -186,6 +207,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 participants.push({ id: guest.id, name: guest.name, isGuest: true });
             }
         });
+
+        // Add Unknown guest for itemized expenses (allows items to be claimed later)
+        if (splitType === 'ITEMIZED' && unknownGuest) {
+            participants.push({ id: unknownGuest.id, name: 'Unknown', isGuest: true });
+        }
 
         return participants;
     };

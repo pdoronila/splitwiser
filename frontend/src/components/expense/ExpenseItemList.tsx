@@ -92,6 +92,7 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                 const isAssigned = item.assignments.some(
                                     a => a.user_id === p.id && a.is_guest === p.isGuest
                                 );
+                                const isUnknown = p.name === 'Unknown' && p.isGuest;
 
                                 return (
                                     <button
@@ -99,11 +100,15 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                         type="button"
                                         onClick={() => onToggleAssignment(idx, p)}
                                         className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${isAssigned
-                                            ? 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
-                                            : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                            ? isUnknown
+                                                ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-500 dark:border-purple-600 text-purple-700 dark:text-purple-300'
+                                                : 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
+                                            : isUnknown
+                                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 text-purple-500 dark:text-purple-400'
+                                                : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
                                             }`}
                                     >
-                                        {getParticipantName(p)}
+                                        {isUnknown ? '? Unknown' : getParticipantName(p)}
                                     </button>
                                 );
                             })}
