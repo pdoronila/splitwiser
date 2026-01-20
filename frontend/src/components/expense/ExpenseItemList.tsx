@@ -101,10 +101,10 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                         onClick={() => onToggleAssignment(idx, p)}
                                         className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${isAssigned
                                             ? isUnknown
-                                                ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-500 dark:border-purple-600 text-purple-700 dark:text-purple-300'
+                                                ? 'bg-yellow-200 dark:bg-yellow-700/50 border-yellow-500 dark:border-yellow-500 text-yellow-900 dark:text-yellow-100 font-medium'
                                                 : 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
                                             : isUnknown
-                                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 text-purple-500 dark:text-purple-400'
+                                                ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-300'
                                                 : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
                                             }`}
                                     >
