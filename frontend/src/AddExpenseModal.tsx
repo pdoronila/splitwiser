@@ -284,14 +284,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         };
 
         if (splitType === 'ITEMIZED') {
-            const unassigned = itemizedExpense.itemizedItems.filter(
+            const itemsWithoutAssignees = itemizedExpense.itemizedItems.filter(
                 item => !item.is_tax_tip && item.assignments.length === 0
             );
-            if (unassigned.length > 0) {
+            if (itemsWithoutAssignees.length > 0) {
                 setAlertDialog({
                     isOpen: true,
-                    title: 'Unassigned Items',
-                    message: `Please assign all items. Unassigned: ${unassigned.map(i => i.description).join(', ')}`,
+                    title: 'Items Without Assignees',
+                    message: `Please assign all items to at least one person (or use "Unassigned" for items to be claimed later). Missing: ${itemsWithoutAssignees.map(i => i.description).join(', ')}`,
                     type: 'error'
                 });
                 return;
@@ -308,7 +308,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
             const participantsWithoutItems = allParticipants.filter(p => {
                 const key = getParticipantKey(p);
-                return !participantsWithItems.has(key);
+                // Exclude Unassigned placeholder from this check - it's optional
+                const isUnassignedPlaceholder = p.isGuest && unknownGuest && p.id === unknownGuest.id;
+                return !participantsWithItems.has(key) && !isUnassignedPlaceholder;
             });
 
             // Helper function to finalize itemized expense
