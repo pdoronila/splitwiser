@@ -144,7 +144,7 @@ def get_or_create_unknown_guest(
     # Create new unknown guest
     unknown_guest = models.GuestMember(
         group_id=group_id,
-        name="Unknown",
+        name="Unassigned",
         created_by_id=current_user.id,
         is_unknown_placeholder=True
     )

@@ -208,9 +208,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             }
         });
 
-        // Add Unknown guest for itemized expenses (allows items to be claimed later)
+        // Add Unassigned guest for itemized expenses (allows items to be claimed later)
         if (splitType === 'ITEMIZED' && unknownGuest) {
-            participants.push({ id: unknownGuest.id, name: 'Unknown', isGuest: true });
+            participants.push({ id: unknownGuest.id, name: 'Unassigned', isGuest: true });
         }
 
         return participants;

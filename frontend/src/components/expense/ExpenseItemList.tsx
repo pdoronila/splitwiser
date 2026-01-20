@@ -92,7 +92,7 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                 const isAssigned = item.assignments.some(
                                     a => a.user_id === p.id && a.is_guest === p.isGuest
                                 );
-                                const isUnknown = p.name === 'Unknown' && p.isGuest;
+                                const isUnassigned = p.name === 'Unassigned' && p.isGuest;
 
                                 return (
                                     <button
@@ -100,15 +100,15 @@ const ExpenseItemList: React.FC<ExpenseItemListProps> = ({
                                         type="button"
                                         onClick={() => onToggleAssignment(idx, p)}
                                         className={`px-3 py-2 text-sm rounded-full border min-h-[44px] ${isAssigned
-                                            ? isUnknown
+                                            ? isUnassigned
                                                 ? 'bg-yellow-200 dark:bg-yellow-700/50 border-yellow-500 dark:border-yellow-500 text-yellow-900 dark:text-yellow-100 font-medium'
                                                 : 'bg-teal-100 dark:bg-teal-900/30 border-teal-500 dark:border-teal-600 text-teal-700 dark:text-teal-300'
-                                            : isUnknown
+                                            : isUnassigned
                                                 ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-300'
                                                 : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
                                             }`}
                                     >
-                                        {isUnknown ? '? Unknown' : getParticipantName(p)}
+                                        {isUnassigned ? '? Unassigned' : getParticipantName(p)}
                                     </button>
                                 );
                             })}
