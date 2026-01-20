@@ -8,6 +8,7 @@ interface ExpenseSummary {
     description: string;
     amount: number;
     currency: string;
+    has_unknown_assignments?: boolean;
 }
 
 interface ExpenseListItemProps {
@@ -19,7 +20,9 @@ interface ExpenseListItemProps {
 const ExpenseListItem: React.FC<ExpenseListItemProps> = memo(({ expense, payerName, onClick }) => {
     return (
         <button
-            className="w-full text-left py-3 flex items-start lg:items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded gap-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className={`w-full text-left py-3 flex items-start lg:items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded gap-2 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                expense.has_unknown_assignments ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500' : ''
+            }`}
             onClick={() => onClick(expense.id)}
         >
             <div className="flex items-start lg:items-center gap-2 lg:gap-4 min-w-0 flex-1">
@@ -32,8 +35,15 @@ const ExpenseListItem: React.FC<ExpenseListItemProps> = memo(({ expense, payerNa
                     </div>
                 )}
                 <div className="min-w-0">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {expense.description}
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {expense.description}
+                        </span>
+                        {expense.has_unknown_assignments && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 flex-shrink-0">
+                                Unclaimed
+                            </span>
+                        )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                         {payerName} paid
